@@ -1,0 +1,4 @@
+interface:
+  display_name: "Branch Naming"
+  short_description: "Padroniza nomes de branches Git"
+  default_prompt: "Use $branch-naming para sugerir uma branch curta e consistente."
