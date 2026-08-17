@@ -1,0 +1,4 @@
+interface:
+  display_name: "Commit Style"
+  short_description: "Escreve commits convencionais claros"
+  default_prompt: "Use $commit-style para criar uma mensagem baseada no diff preparado."
