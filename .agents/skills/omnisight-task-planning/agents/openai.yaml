@@ -1,0 +1,4 @@
+interface:
+  display_name: "OmniSight Task Planning"
+  short_description: "Padroniza tarefas Scrum do projeto OmniSight"
+  default_prompt: "Use $omnisight-task-planning para criar ou refinar tarefas do backlog OmniSight."
