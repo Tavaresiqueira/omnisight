@@ -1,0 +1,4 @@
+interface:
+  display_name: "Engineering Judgment"
+  short_description: "Orienta decisões técnicas proporcionais"
+  default_prompt: "Use $engineering-judgment para definir o menor plano seguro para esta mudança."
