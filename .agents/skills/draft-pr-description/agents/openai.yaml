@@ -1,0 +1,4 @@
+interface:
+  display_name: "Draft PR Description"
+  short_description: "Creates traceable pull request descriptions"
+  default_prompt: "Use $draft-pr-description to draft a complete and verifiable description for the current pull request."
