@@ -1,0 +1,55 @@
+@startuml OmniSightUseCases
+title OmniSight — Diagrama de Caso de Uso
+left to right direction
+skinparam monochrome true
+skinparam shadowing false
+skinparam packageStyle rectangle
+
+actor "Desenvolvedor / QA" as Developer
+actor "Gestor da organização" as Manager
+actor "Pessoa com necessidade\nde acessibilidade" as EndUser
+actor "Administrador" as Admin
+actor "Site externo" as ExternalSite
+
+rectangle "OmniSight" {
+  usecase "Autenticar e acessar\na organização\nRF-001" as UCAuth
+  usecase "Cadastrar site\nRF-002" as UCSite
+  usecase "Solicitar scan\nRF-003 a RF-005" as UCScan
+  usecase "Analisar barreiras\nRF-006 a RF-009" as UCAnalyze
+  usecase "Consultar score e\norientações\nRF-010 a RF-013" as UCReport
+  usecase "Simular condições\nde percepção\nRF-014" as UCSimulate
+  usecase "Acompanhar histórico\ne evolução\nRF-015 a RF-017" as UCHistory
+  usecase "Configurar adaptações\nlocais reversíveis\nRF-018 a RF-020" as UCAdapt
+  usecase "Solicitar exclusão\nde dados\nRF-021" as UCDelete
+  usecase "Auditar eventos\noperacionais\nRF-022" as UCAudit
+  usecase "Validar destino\ncontra SSRF\nRF-003" as UCSSRF
+  usecase "Executar revisão\nhumana" as UCManual
+}
+
+Developer --> UCAuth
+Developer --> UCSite
+Developer --> UCScan
+Developer --> UCReport
+Developer --> UCSimulate
+Developer --> UCHistory
+Developer --> UCDelete
+
+Manager --> UCAuth
+Manager --> UCHistory
+Manager --> UCDelete
+
+EndUser --> UCAdapt
+
+Admin --> UCAudit
+
+UCScan .> UCSSRF : <<include>>
+UCScan .> UCAnalyze : <<include>>
+UCAnalyze --> ExternalSite : coleta controlada
+UCReport .> UCManual : <<extend>>\nquando inconclusivo
+
+note bottom of UCManual
+  Automação não certifica conformidade.
+  Achados inconclusivos exigem validação humana.
+  RB-001 e RB-002
+end note
+@enduml

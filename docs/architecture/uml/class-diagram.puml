@@ -1,0 +1,94 @@
+@startuml OmniSightConceptualClasses
+title OmniSight — Diagrama de Classes Conceitual
+skinparam monochrome true
+skinparam shadowing false
+skinparam classAttributeIconSize 0
+
+class Organizacao {
+  +id: Identificador
+  +nome: Texto
+}
+
+class Usuario {
+  +id: Identificador
+  +email: Texto
+  +papel: Papel
+}
+
+class Site {
+  +id: Identificador
+  +urlNormalizada: URL
+  +nome: Texto
+}
+
+class Scan {
+  +id: Identificador
+  +estado: EstadoScan
+  +iniciadoEm: Instante
+  +concluidoEm: Instante?
+  +versaoEngine: Versao
+  +solicitar()
+  +cancelar()
+}
+
+class Snapshot {
+  +id: Identificador
+  +scoreGeral: Decimal
+  +versaoFormula: Versao
+  +criadoEm: Instante
+  +compararCom(outro): Comparacao
+}
+
+class Achado {
+  +id: Identificador
+  +severidade: Severidade
+  +confianca: Confianca
+  +tipoValidacao: TipoValidacao
+  +criterioWCAG: Texto
+  +estado: EstadoResolucao
+}
+
+class RegraScanner {
+  +codigo: Texto
+  +versao: Versao
+  +categoria: Texto
+  +principioPOUR: PrincipioPOUR
+  +avaliar(documento): Resultado
+}
+
+class EventoAuditoria {
+  +id: Identificador
+  +tipo: Texto
+  +ocorridoEm: Instante
+  +resultado: Texto
+}
+
+class PreferenciaExtensao {
+  +dominio: Dominio?
+  +perfil: PerfilAdaptacao
+  +ativa: Booleano
+  +aplicar()
+  +reverter()
+}
+
+Organizacao "1" *-- "0..*" Usuario : membros
+Organizacao "1" *-- "0..*" Site : possui
+Site "1" *-- "0..*" Scan : histórico
+Scan "1" *-- "0..1" Snapshot : resultado
+Snapshot "1" *-- "0..*" Achado : contém
+Achado "0..*" --> "1" RegraScanner : produzido por
+Organizacao "1" *-- "0..*" EventoAuditoria : registra
+Usuario "0..1" --> "0..*" EventoAuditoria : ator
+Usuario "1" *-- "0..*" PreferenciaExtensao : mantém localmente
+
+note right of Achado
+  Severidade e confiança são dimensões distintas.
+  TipoValidacao: automática, humana ou informativa.
+  RF-008, RF-009 e RB-004
+end note
+
+note bottom of PreferenciaExtensao
+  Persistência local, permissão mínima e reversibilidade.
+  RF-018 a RF-020 e RB-005
+end note
+@enduml
