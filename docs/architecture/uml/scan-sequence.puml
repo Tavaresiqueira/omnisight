@@ -1,0 +1,61 @@
+@startuml OmniSightScanSequence
+title OmniSight — Sequência de Execução e Consulta de Scan
+skinparam monochrome true
+skinparam shadowing false
+autonumber
+
+actor Usuario
+boundary "Aplicação web" as Web
+control "API" as API
+control "Validador de destino" as Validator
+queue "Fila de scans" as Queue
+control "Worker isolado" as Worker
+entity "Site externo" as Site
+control "Engine de regras" as Engine
+database "Persistência" as Database
+
+Usuario -> Web : solicitar scan(url)
+Web -> API : POST /scans
+API -> API : autenticar, autorizar e aplicar quota
+API -> Validator : validar esquema, DNS, IP e porta
+
+alt destino proibido ou inválido
+  Validator --> API : rejeição explicável
+  API --> Web : erro acessível, sem enfileirar
+  Web --> Usuario : orientar correção
+else destino permitido
+  Validator --> API : destino validado
+  API -> Database : criar scan pendente com chave idempotente
+  Database --> API : scanId
+  API -> Queue : publicar(scanId)
+  API --> Web : 202 Accepted + scanId
+  Web --> Usuario : informar estado pendente
+
+  Queue -> Worker : consumir(scanId)
+  Worker -> Validator : revalidar destino antes da conexão
+  Validator --> Worker : destino permitido
+  Worker -> Site : coletar com limites e isolamento
+  Site --> Worker : documento e recursos permitidos
+  Worker -> Engine : avaliar(documento, versão das regras)
+  Engine --> Worker : achados + tipo de validação
+  Worker -> Database : persistir snapshot, versões, score e achados
+  Worker -> Database : concluir scan de forma idempotente
+
+  Usuario -> Web : consultar resultado
+  Web -> API : GET /scans/{scanId}
+  API -> Database : buscar dentro da organização
+  Database --> API : relatório autorizado
+  API --> Web : score explicável + achados
+  Web --> Usuario : relatório acessível
+end
+
+note over Validator,Worker
+  Revalidar cada redirecionamento e bloquear destinos privados.
+  RF-003, RNF-SEC-001 e RNF-SEC-002
+end note
+
+note over Engine,Database
+  Achados inconclusivos permanecem marcados para revisão humana.
+  RF-008, RF-010 e RB-002
+end note
+@enduml

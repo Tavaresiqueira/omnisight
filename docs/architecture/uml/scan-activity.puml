@@ -1,0 +1,54 @@
+@startuml OmniSightScanActivity
+title OmniSight — Atividade do Processo de Scan
+skinparam monochrome true
+skinparam shadowing false
+
+start
+:Receber solicitação autenticada;
+:Validar autorização, quota e idempotência;
+
+if (URL e destino permitidos?) then (não)
+  :Rejeitar sem iniciar o scan;
+  :Apresentar mensagem acessível e acionável;
+  stop
+else (sim)
+  :Criar scan pendente;
+  :Enfileirar processamento;
+endif
+
+:Iniciar worker efêmero e isolado;
+:Revalidar DNS, IP, porta e redirecionamentos;
+
+if (Destino continua permitido?) then (não)
+  :Registrar falha controlada;
+  :Finalizar ambiente isolado;
+  stop
+else (sim)
+  :Coletar página com limites de tempo e recursos;
+endif
+
+if (Coleta respeitou os limites?) then (não)
+  :Registrar motivo da interrupção;
+  :Finalizar ambiente isolado;
+  stop
+else (sim)
+  :Executar regras automatizadas versionadas;
+  :Classificar severidade, confiança e princípio POUR;
+endif
+
+if (Resultado exige julgamento humano?) then (sim)
+  :Marcar como revisão humana;
+else (não)
+  :Marcar como automático ou informativo;
+endif
+
+:Calcular score explicável sem tratar\ninconclusivo como violação confirmada;
+:Persistir snapshot, versões e achados;
+:Publicar relatório acessível;
+:Finalizar ambiente isolado;
+stop
+
+legend bottom
+  RF-003 a RF-010 · RNF-SEC-001/002 · RB-001/002
+endlegend
+@enduml
