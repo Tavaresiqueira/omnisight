@@ -562,6 +562,8 @@ Relacionamentos e atributos físicos serão definidos no modelo de dados e nas m
 | Privacidade e exclusão | RF-021, RNF-PRI-* | PRIVACIDADE, BANCO DE DADOS | Testes de lifecycle e inventário |
 | Operação segura | RF-022, RNF-SEC-*, RNF-REL-*, RNF-OBS-* | DEVOPS, REDES, RELIABILITY | CI/CD, métricas, runbooks e restore |
 
+A [matriz WCAG 2.2, score e adaptações](../accessibility/wcag-score-adaptation-matrix.html) detalha os critérios observados pelo scanner, a proposta versionável de pontuação e os limites das adaptações locais da extensão.
+
 ## 13. Critérios de aceite da SRS
 
 - Todas as sete capacidades principais possuem requisitos funcionais rastreáveis.

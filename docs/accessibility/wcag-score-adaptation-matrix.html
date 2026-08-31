@@ -1,0 +1,251 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Matriz WCAG 2.2, score e adaptações — OmniSight</title>
+  <style>
+    :root { color-scheme: light dark; --bg:#f7f8fb; --surface:#fff; --text:#172033; --muted:#526079; --accent:#3157d5; --border:#c9d1e2; --focus:#ffbf47; --ok:#176b3a; --warn:#8a4b00; }
+    @media (prefers-color-scheme: dark) { :root { --bg:#101521; --surface:#182033; --text:#f4f6fb; --muted:#bbc6da; --accent:#9db4ff; --border:#42506b; --ok:#7bd9a0; --warn:#ffc56e; } }
+    * { box-sizing:border-box; }
+    html { font-family:system-ui,-apple-system,"Segoe UI",sans-serif; line-height:1.55; background:var(--bg); color:var(--text); }
+    body { margin:0; }
+    a { color:var(--accent); }
+    a:focus-visible, button:focus-visible, input:focus-visible, select:focus-visible { outline:3px solid var(--focus); outline-offset:3px; }
+    .skip { position:absolute; left:-9999px; top:1rem; background:var(--surface); padding:.75rem; z-index:10; }
+    .skip:focus { left:1rem; }
+    header, main, footer { width:min(1440px, calc(100% - 2rem)); margin-inline:auto; }
+    header { padding:2.5rem 0 1rem; }
+    h1 { font-size:clamp(2rem,5vw,3.5rem); line-height:1.08; max-width:18ch; margin:.25rem 0 1rem; }
+    h2 { margin-top:2.5rem; }
+    h3 { margin-top:1.5rem; }
+    .eyebrow { color:var(--accent); font-weight:750; letter-spacing:.08em; text-transform:uppercase; }
+    .lede, .note { max-width:78ch; color:var(--muted); }
+    .warning { border-left:.35rem solid var(--warn); background:var(--surface); padding:1rem 1.25rem; max-width:90ch; }
+    .grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(240px,1fr)); gap:1rem; }
+    .card { background:var(--surface); border:1px solid var(--border); border-radius:.75rem; padding:1rem; }
+    .card h3 { margin-top:0; }
+    .metric { font-size:2rem; font-weight:800; margin:0; }
+    code { background:color-mix(in srgb,var(--surface),var(--border) 30%); padding:.1em .3em; border-radius:.2rem; }
+    .controls { display:grid; grid-template-columns:2fr repeat(3,minmax(10rem,1fr)); gap:.75rem; margin:1rem 0; }
+    label { font-weight:650; }
+    input, select { width:100%; margin-top:.25rem; padding:.7rem; color:var(--text); background:var(--surface); border:1px solid var(--border); border-radius:.4rem; font:inherit; }
+    .table-wrap { overflow-x:auto; border:1px solid var(--border); border-radius:.5rem; background:var(--surface); }
+    table { width:100%; border-collapse:collapse; min-width:1180px; }
+    caption { text-align:left; font-weight:700; padding:1rem; }
+    th, td { text-align:left; vertical-align:top; padding:.7rem; border-bottom:1px solid var(--border); }
+    th { background:color-mix(in srgb,var(--surface),var(--accent) 9%); position:sticky; top:0; }
+    tbody tr:hover { background:color-mix(in srgb,var(--surface),var(--accent) 5%); }
+    .tag { display:inline-block; border:1px solid currentColor; border-radius:999px; padding:.05rem .45rem; white-space:nowrap; font-size:.85rem; }
+    .removed { color:var(--warn); font-weight:700; }
+    .sr-only { position:absolute; width:1px; height:1px; padding:0; margin:-1px; overflow:hidden; clip:rect(0,0,0,0); white-space:nowrap; border:0; }
+    footer { padding:3rem 0; color:var(--muted); }
+    @media (max-width:900px) { .controls { grid-template-columns:1fr 1fr; } }
+    @media (max-width:560px) { .controls { grid-template-columns:1fr; } }
+    @media print { .controls,.skip { display:none; } header,main,footer { width:100%; } table { min-width:0; font-size:8pt; } th { position:static; } }
+  </style>
+</head>
+<body>
+  <a class="skip" href="#conteudo">Ir para o conteúdo</a>
+  <header>
+    <p class="eyebrow">OmniSight · definição de produto · versão 0.1.0</p>
+    <h1>Matriz WCAG 2.2, score e adaptações</h1>
+    <p class="lede">Contrato inicial entre scanner, score explicável e extensão adaptativa. A matriz cobre os 86 critérios ativos da WCAG 2.2 e mantém o critério 4.1.1 apenas como registro histórico.</p>
+    <p class="warning"><strong>Limite de interpretação:</strong> o score indica barreiras observadas em uma página e não certifica conformidade. Critérios que exigem contexto, julgamento humano ou tecnologia assistiva permanecem como “revisão necessária” até haver evidência.</p>
+  </header>
+  <main id="conteudo">
+    <section aria-labelledby="decisoes">
+      <h2 id="decisoes">Decisões principais</h2>
+      <div class="grid">
+        <article class="card"><h3>Unidade avaliada</h3><p>Uma página renderizada, com URL normalizada, viewport, estado autenticado declarado, data e versões da engine, regras e fórmula.</p></article>
+        <article class="card"><h3>Meta do produto</h3><p>Priorizar nível <strong>AA</strong> no MVP, sem ocultar critérios AAA úteis nem inferir conformidade por amostragem.</p></article>
+        <article class="card"><h3>Dois resultados separados</h3><p><strong>Score da página</strong> mede evidências. <strong>Perfil adaptativo</strong> registra preferências do usuário e nunca melhora artificialmente a nota.</p></article>
+        <article class="card"><h3>Reversibilidade</h3><p>Toda adaptação deve ser local, desligável imediatamente, persistida por domínio somente por escolha do usuário e sem executar ações de negócio.</p></article>
+      </div>
+    </section>
+
+    <section aria-labelledby="formula">
+      <h2 id="formula">Modelo proposto de score</h2>
+      <p>Baseline para implementação de <code>RF-009</code> e <code>RF-010</code>; deve ser versionada e calibrada com fixtures e auditorias humanas antes de uso comparativo.</p>
+      <div class="table-wrap">
+        <table>
+          <caption>Parâmetros observados no cálculo</caption>
+          <thead><tr><th>Parâmetro</th><th>Valores</th><th>Uso</th><th>Regra de segurança</th></tr></thead>
+          <tbody>
+            <tr><td>Nível WCAG</td><td>A = 3; AA = 2; AAA = 1</td><td>Peso normativo base do critério aplicável.</td><td>Não significa que AAA seja irrelevante; a meta padrão do MVP é AA.</td></tr>
+            <tr><td>Impacto</td><td>Crítico = 4; Sério = 3; Moderado = 2; Menor = 1</td><td>Representa a barreira potencial para concluir uma tarefa.</td><td>Impacto e confiança são dimensões independentes.</td></tr>
+            <tr><td>Confiança</td><td>Alta = 1; Média = 0,75; Baixa = 0,5</td><td>Modula evidência automática confirmada.</td><td>Baixa confiança deve preferencialmente gerar revisão, não falsa certeza.</td></tr>
+            <tr><td>Incidência</td><td><code>min(1; elementos afetados / max(1; elementos aplicáveis))</code></td><td>Evita que uma ocorrência e centenas tenham o mesmo efeito.</td><td>Limite em 1 impede penalidade descontrolada.</td></tr>
+            <tr><td>Estado</td><td>Falha confirmada = 1; revisão = 0; aprovado = 0; não aplicável = excluído</td><td>Somente evidência confirmada entra na penalização.</td><td>Revisão pendente aparece na cobertura e nunca equivale a aprovação.</td></tr>
+            <tr><td>Critério obsoleto</td><td>4.1.1 = excluído</td><td>Mantido somente para rastreabilidade histórica.</td><td>Não entra no denominador nem na penalização.</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p><strong>Penalidade por achado:</strong> <code>peso do nível × impacto × confiança × incidência × estado</code>. O score de cada princípio POUR é <code>100 × (1 − penalidades confirmadas / penalidade máxima aplicável)</code>, limitado entre 0 e 100. O score geral é a média ponderada dos princípios pelo total de peso aplicável. O relatório deve sempre exibir também cobertura automática, quantidade de revisões pendentes, critérios não aplicáveis e a versão da fórmula.</p>
+    </section>
+
+    <section aria-labelledby="adaptacoes">
+      <h2 id="adaptacoes">Catálogo de adaptações da extensão</h2>
+      <div class="grid">
+        <article class="card"><h3>A1 · Legibilidade</h3><p>Aumentar fonte e altura de linha; limitar largura de leitura; ajustar espaçamento; escolher fonte legível. Não substituir texto nem remover conteúdo.</p></article>
+        <article class="card"><h3>A2 · Contraste e distinção</h3><p>Aplicar tema de alto contraste, sublinhar links e reforçar estados sem depender apenas de cor. Preservar significado e controles.</p></article>
+        <article class="card"><h3>A3 · Foco e navegação</h3><p>Realçar foco, links, headings e landmarks; oferecer atalhos locais para regiões detectáveis. Não reordenar o DOM de forma insegura.</p></article>
+        <article class="card"><h3>A4 · Alvos e ponteiro</h3><p>Ampliar cursor e área visual/interativa de alvos quando não houver sobreposição; oferecer alternativa a gestos de arrastar quando tecnicamente segura.</p></article>
+        <article class="card"><h3>A5 · Movimento e tempo</h3><p>Reduzir animações, pausar mídia decorativa e sinalizar limites de tempo. Não contornar expiração, autenticação ou lógica do site.</p></article>
+        <article class="card"><h3>A6 · Apoio cognitivo</h3><p>Destacar campos, instruções, erros e ajuda existentes; reduzir distrações de apresentação. Simplificação de conteúdo exige consentimento e não substitui o original.</p></article>
+        <article class="card"><h3>A7 · Mídia</h3><p>Expor controles e trilhas já disponíveis, preferir legendas e transcrições existentes. A extensão não deve inventar alternativa como se fosse fornecida pelo autor.</p></article>
+        <article class="card"><h3>Sem adaptação segura</h3><p>Problemas sem correção local confiável recebem explicação e orientação. A extensão não cria rótulos, textos alternativos ou decisões semânticas sem evidência.</p></article>
+      </div>
+    </section>
+
+    <section aria-labelledby="matriz">
+      <h2 id="matriz">Matriz completa de critérios</h2>
+      <p id="matrix-help" class="note">Use os filtros para reduzir a tabela. A coluna “teste” indica a estratégia inicial do OmniSight, não uma propriedade normativa da WCAG.</p>
+      <div class="controls" role="search" aria-label="Filtrar critérios">
+        <label>Buscar<input id="busca" type="search" placeholder="Ex.: contraste, 2.4.7" aria-describedby="matrix-help"></label>
+        <label>Princípio<select id="principio"><option value="">Todos</option><option>Perceptível</option><option>Operável</option><option>Compreensível</option><option>Robusto</option></select></label>
+        <label>Nível<select id="nivel"><option value="">Todos</option><option>A</option><option>AA</option><option>AAA</option><option>Removido</option></select></label>
+        <label>Teste<select id="teste"><option value="">Todos</option><option>Automático</option><option>Semiautomático</option><option>Manual</option></select></label>
+      </div>
+      <p aria-live="polite"><strong id="resultado">87 critérios exibidos (86 ativos e 1 removido).</strong></p>
+      <div class="table-wrap" tabindex="0" aria-label="Tabela rolável horizontalmente">
+        <table>
+          <caption class="sr-only">Critérios WCAG 2.2 relacionados ao score e às adaptações</caption>
+          <thead><tr><th>Critério</th><th>Princípio / diretriz</th><th>Nível</th><th>Categoria observada</th><th>Teste inicial</th><th>Efeito no score</th><th>Adaptação local relacionada</th><th>Referência</th></tr></thead>
+          <tbody id="linhas"></tbody>
+        </table>
+      </div>
+      <noscript><p class="warning">Ative JavaScript para visualizar e filtrar a matriz. As definições de score e adaptações permanecem disponíveis acima.</p></noscript>
+    </section>
+
+    <section aria-labelledby="governanca">
+      <h2 id="governanca">Governança e evidência mínima</h2>
+      <ul>
+        <li>Guardar por scan: URL normalizada, viewport, horário, versões, critérios aplicáveis, achados, seletores/evidências e cobertura.</li>
+        <li>Reclassificar um teste somente com fixture positiva, negativa e inconclusiva; testes semânticos ou contextuais continuam exigindo revisão humana.</li>
+        <li>Comparar scores apenas quando fórmula, regras e parâmetros forem compatíveis; caso contrário, informar a quebra de série.</li>
+        <li>Testar adaptações com teclado, zoom/reflow, leitor de tela e páginas representativas; registrar conflitos e oferecer restauração.</li>
+        <li>Não afirmar conformidade WCAG integral com base no scanner, no score ou nas adaptações.</li>
+      </ul>
+    </section>
+  </main>
+  <footer>
+    <p>Rastreabilidade: RF-007 a RF-010, RF-018 a RF-020; RB-001, RB-002, RB-004 e RB-005 da SRS do OmniSight.</p>
+    <p>Fontes: <a href="https://www.w3c.br/traducoes/wcag/wcag22-pt-BR/">WCAG 2.2 em português do Brasil</a> e <a href="https://www.w3.org/TR/WCAG22/">recomendação normativa do W3C</a>. A tradução auxilia a leitura; em caso de divergência, prevalece a versão normativa em inglês.</p>
+  </footer>
+  <script>
+    const dados = [
+      ['1.1.1','Conteúdo Não Textual','1.1 Alternativas em Texto','A','Conteúdo e semântica','Semiautomático','A7 ou sem adaptação segura'],
+      ['1.2.1','Apenas Áudio e Apenas Vídeo (Pré-gravado)','1.2 Mídias com base em tempo','A','Mídia','Manual','A7'],
+      ['1.2.2','Legendas (Pré-gravadas)','1.2 Mídias com base em tempo','A','Mídia','Semiautomático','A7'],
+      ['1.2.3','Audiodescrição ou Mídia Alternativa (Pré-gravada)','1.2 Mídias com base em tempo','A','Mídia','Manual','A7'],
+      ['1.2.4','Legendas (Ao Vivo)','1.2 Mídias com base em tempo','AA','Mídia','Manual','A7'],
+      ['1.2.5','Audiodescrição (Pré-gravada)','1.2 Mídias com base em tempo','AA','Mídia','Manual','A7'],
+      ['1.2.6','Língua de sinais (Pré-gravada)','1.2 Mídias com base em tempo','AAA','Mídia','Manual','A7'],
+      ['1.2.7','Audiodescrição Estendida (Pré-gravada)','1.2 Mídias com base em tempo','AAA','Mídia','Manual','A7'],
+      ['1.2.8','Mídia Alternativa (Pré-gravada)','1.2 Mídias com base em tempo','AAA','Mídia','Manual','A7'],
+      ['1.2.9','Apenas Áudio (Ao Vivo)','1.2 Mídias com base em tempo','AAA','Mídia','Manual','A7'],
+      ['1.3.1','Informações e Relações','1.3 Adaptável','A','Estrutura e semântica','Semiautomático','A3 ou sem adaptação segura'],
+      ['1.3.2','Sequência com Significado','1.3 Adaptável','A','Estrutura e ordem','Manual','A3'],
+      ['1.3.3','Características Sensoriais','1.3 Adaptável','A','Instruções','Manual','A2 e A6'],
+      ['1.3.4','Orientação','1.3 Adaptável','AA','Layout responsivo','Semiautomático','A1'],
+      ['1.3.5','Identificar o Propósito de Entrada','1.3 Adaptável','AA','Formulários','Automático','A6'],
+      ['1.3.6','Identificar o Propósito','1.3 Adaptável','AAA','Semântica e personalização','Semiautomático','A3 e A6'],
+      ['1.4.1','Uso de Cores','1.4 Discernível','A','Cor','Semiautomático','A2'],
+      ['1.4.2','Controle de Áudio','1.4 Discernível','A','Áudio','Semiautomático','A7'],
+      ['1.4.3','Contraste (Mínimo)','1.4 Discernível','AA','Contraste de texto','Automático','A2'],
+      ['1.4.4','Redimensionar Texto','1.4 Discernível','AA','Texto e zoom','Semiautomático','A1'],
+      ['1.4.5','Imagens de Texto','1.4 Discernível','AA','Texto visual','Semiautomático','A1 ou sem adaptação segura'],
+      ['1.4.6','Contraste (Melhorado)','1.4 Discernível','AAA','Contraste de texto','Automático','A2'],
+      ['1.4.7','Áudio de fundo baixo ou sem Áudio de fundo','1.4 Discernível','AAA','Áudio','Manual','A7'],
+      ['1.4.8','Apresentação Visual','1.4 Discernível','AAA','Legibilidade','Semiautomático','A1 e A2'],
+      ['1.4.9','Imagens de Texto (Sem exceção)','1.4 Discernível','AAA','Texto visual','Semiautomático','A1 ou sem adaptação segura'],
+      ['1.4.10','Realinhar','1.4 Discernível','AA','Reflow e responsividade','Semiautomático','A1'],
+      ['1.4.11','Contraste Não Textual','1.4 Discernível','AA','Contraste de interface','Semiautomático','A2'],
+      ['1.4.12','Espaçamento de Texto','1.4 Discernível','AA','Legibilidade','Semiautomático','A1'],
+      ['1.4.13','Conteúdo em foco por mouse ou teclado','1.4 Discernível','AA','Conteúdo sobreposto','Semiautomático','A3'],
+      ['2.1.1','Teclado','2.1 Acessível por Teclado','A','Teclado','Semiautomático','A3 ou sem adaptação segura'],
+      ['2.1.2','Sem Bloqueio do Teclado','2.1 Acessível por Teclado','A','Teclado','Semiautomático','A3'],
+      ['2.1.3','Teclado (Sem Exceção)','2.1 Acessível por Teclado','AAA','Teclado','Manual','A3'],
+      ['2.1.4','Atalhos de teclado por caractere','2.1 Acessível por Teclado','A','Teclado','Semiautomático','A3'],
+      ['2.2.1','Tempo ajustável','2.2 Tempo Suficiente','A','Tempo','Manual','A5'],
+      ['2.2.2','Colocar em Pausa, Parar, Ocultar','2.2 Tempo Suficiente','A','Movimento e atualização','Semiautomático','A5'],
+      ['2.2.3','Sem limite de tempo','2.2 Tempo Suficiente','AAA','Tempo','Manual','A5'],
+      ['2.2.4','Interrupções','2.2 Tempo Suficiente','AAA','Interrupções','Manual','A5 e A6'],
+      ['2.2.5','Reautenticação','2.2 Tempo Suficiente','AAA','Sessão','Manual','Sem adaptação segura'],
+      ['2.2.6','Limites de Tempo','2.2 Tempo Suficiente','AAA','Tempo','Manual','A5'],
+      ['2.3.1','Três Flashes ou Abaixo do Limite','2.3 Convulsões e Reações Físicas','A','Flashes','Semiautomático','A5'],
+      ['2.3.2','Três Flashes','2.3 Convulsões e Reações Físicas','AAA','Flashes','Semiautomático','A5'],
+      ['2.3.3','Animação de Interações','2.3 Convulsões e Reações Físicas','AAA','Movimento','Semiautomático','A5'],
+      ['2.4.1','Contornar Blocos','2.4 Navegável','A','Navegação','Semiautomático','A3'],
+      ['2.4.2','Página com Título','2.4 Navegável','A','Identificação','Automático','A3'],
+      ['2.4.3','Ordem do Foco','2.4 Navegável','A','Foco','Semiautomático','A3'],
+      ['2.4.4','Finalidade do Link (Em contexto)','2.4 Navegável','A','Links','Semiautomático','A3'],
+      ['2.4.5','Várias Formas','2.4 Navegável','AA','Navegação','Manual','A3'],
+      ['2.4.6','Cabeçalhos e Rótulos','2.4 Navegável','AA','Estrutura e rótulos','Semiautomático','A3 e A6'],
+      ['2.4.7','Foco Visível','2.4 Navegável','AA','Foco','Semiautomático','A3'],
+      ['2.4.8','Localização','2.4 Navegável','AAA','Navegação','Manual','A3'],
+      ['2.4.9','Finalidade do Link (Apenas o Link)','2.4 Navegável','AAA','Links','Semiautomático','A3'],
+      ['2.4.10','Cabeçalhos da Seção','2.4 Navegável','AAA','Estrutura','Semiautomático','A3'],
+      ['2.4.11','Foco não Obscurecido (Mínimo)','2.4 Navegável','AA','Foco e sobreposição','Semiautomático','A3'],
+      ['2.4.12','Foco não Obscurecido (Melhorado)','2.4 Navegável','AAA','Foco e sobreposição','Semiautomático','A3'],
+      ['2.4.13','Aparência do Foco','2.4 Navegável','AAA','Foco','Semiautomático','A3'],
+      ['2.5.1','Gestos de Acionamento','2.5 Modalidades de Entrada','A','Gestos','Manual','A4'],
+      ['2.5.2','Cancelamento de Acionamento','2.5 Modalidades de Entrada','A','Ponteiro','Semiautomático','A4'],
+      ['2.5.3','Rótulo em Nome','2.5 Modalidades de Entrada','A','Nome acessível','Semiautomático','Sem adaptação segura'],
+      ['2.5.4','Atuação por Movimento','2.5 Modalidades de Entrada','A','Sensores e movimento','Manual','A4'],
+      ['2.5.5','Tamanho do Alvo (Melhorado)','2.5 Modalidades de Entrada','AAA','Alvos','Automático','A4'],
+      ['2.5.6','Mecanismos de Entrada Simultâneos','2.5 Modalidades de Entrada','AAA','Entrada','Manual','A4'],
+      ['2.5.7','Movimentos de arrastar','2.5 Modalidades de Entrada','AA','Gestos','Semiautomático','A4'],
+      ['2.5.8','Tamanho do Alvo (Mínimo)','2.5 Modalidades de Entrada','AA','Alvos','Automático','A4'],
+      ['3.1.1','Idioma da Página','3.1 Legível','A','Idioma','Automático','A6'],
+      ['3.1.2','Idioma das Partes','3.1 Legível','AA','Idioma','Semiautomático','A6'],
+      ['3.1.3','Palavras Incomuns','3.1 Legível','AAA','Conteúdo','Manual','A6'],
+      ['3.1.4','Abreviaturas','3.1 Legível','AAA','Conteúdo','Manual','A6'],
+      ['3.1.5','Nível de Leitura','3.1 Legível','AAA','Conteúdo','Manual','A6'],
+      ['3.1.6','Pronúncia','3.1 Legível','AAA','Conteúdo','Manual','A6'],
+      ['3.2.1','Em Foco','3.2 Previsível','A','Previsibilidade','Semiautomático','A3'],
+      ['3.2.2','Em Entrada','3.2 Previsível','A','Previsibilidade','Semiautomático','A6'],
+      ['3.2.3','Navegação Consistente','3.2 Previsível','AA','Consistência','Manual','A3'],
+      ['3.2.4','Identificação Consistente','3.2 Previsível','AA','Consistência','Manual','A3 e A6'],
+      ['3.2.5','Mudança Mediante Solicitação','3.2 Previsível','AAA','Previsibilidade','Manual','A6'],
+      ['3.2.6','Ajuda Consistente','3.2 Previsível','A','Ajuda','Manual','A6'],
+      ['3.3.1','Identificação do Erro','3.3 Assistência de Entrada','A','Formulários e erros','Semiautomático','A6'],
+      ['3.3.2','Rótulos ou Instruções','3.3 Assistência de Entrada','A','Formulários','Semiautomático','A6'],
+      ['3.3.3','Sugestão de Erro','3.3 Assistência de Entrada','AA','Formulários e erros','Manual','A6'],
+      ['3.3.4','Prevenção de erros (legais, financeiros, de dados)','3.3 Assistência de Entrada','AA','Prevenção de erros','Manual','Sem adaptação segura'],
+      ['3.3.5','Ajuda','3.3 Assistência de Entrada','AAA','Ajuda','Manual','A6'],
+      ['3.3.6','Prevenção de Erros (Todos)','3.3 Assistência de Entrada','AAA','Prevenção de erros','Manual','Sem adaptação segura'],
+      ['3.3.7','Entrada Redundante','3.3 Assistência de Entrada','A','Formulários','Manual','A6'],
+      ['3.3.8','Autenticação Acessível (Mínimo)','3.3 Assistência de Entrada','AA','Autenticação','Manual','A6'],
+      ['3.3.9','Autenticação Acessível (Melhorado)','3.3 Assistência de Entrada','AAA','Autenticação','Manual','A6'],
+      ['4.1.1','Análise (Obsoleto e removido)','4.1 Compatível','Removido','Histórico','Automático','Sem adaptação segura'],
+      ['4.1.2','Nome, Função, Valor','4.1 Compatível','A','Semântica e ARIA','Semiautomático','Sem adaptação segura'],
+      ['4.1.3','Mensagens de Status','4.1 Compatível','AA','Status e ARIA','Semiautomático','A6']
+    ];
+    const principios = {1:'Perceptível',2:'Operável',3:'Compreensível',4:'Robusto'};
+    const slug = {'1.1.1':'non-text-content','1.2.1':'audio-only-and-video-only-prerecorded','1.2.2':'captions-prerecorded','1.2.3':'audio-description-or-media-alternative-prerecorded','1.2.4':'captions-live','1.2.5':'audio-description-prerecorded','1.2.6':'sign-language-prerecorded','1.2.7':'extended-audio-description-prerecorded','1.2.8':'media-alternative-prerecorded','1.2.9':'audio-only-live','1.3.1':'info-and-relationships','1.3.2':'meaningful-sequence','1.3.3':'sensory-characteristics','1.3.4':'orientation','1.3.5':'identify-input-purpose','1.3.6':'identify-purpose','1.4.1':'use-of-color','1.4.2':'audio-control','1.4.3':'contrast-minimum','1.4.4':'resize-text','1.4.5':'images-of-text','1.4.6':'contrast-enhanced','1.4.7':'low-or-no-background-audio','1.4.8':'visual-presentation','1.4.9':'images-of-text-no-exception','1.4.10':'reflow','1.4.11':'non-text-contrast','1.4.12':'text-spacing','1.4.13':'content-on-hover-or-focus','2.1.1':'keyboard','2.1.2':'no-keyboard-trap','2.1.3':'keyboard-no-exception','2.1.4':'character-key-shortcuts','2.2.1':'timing-adjustable','2.2.2':'pause-stop-hide','2.2.3':'no-timing','2.2.4':'interruptions','2.2.5':'re-authenticating','2.2.6':'timeouts','2.3.1':'three-flashes-or-below-threshold','2.3.2':'three-flashes','2.3.3':'animation-from-interactions','2.4.1':'bypass-blocks','2.4.2':'page-titled','2.4.3':'focus-order','2.4.4':'link-purpose-in-context','2.4.5':'multiple-ways','2.4.6':'headings-and-labels','2.4.7':'focus-visible','2.4.8':'location','2.4.9':'link-purpose-link-only','2.4.10':'section-headings','2.4.11':'focus-not-obscured-minimum','2.4.12':'focus-not-obscured-enhanced','2.4.13':'focus-appearance','2.5.1':'pointer-gestures','2.5.2':'pointer-cancellation','2.5.3':'label-in-name','2.5.4':'motion-actuation','2.5.5':'target-size-enhanced','2.5.6':'concurrent-input-mechanisms','2.5.7':'dragging-movements','2.5.8':'target-size-minimum','3.1.1':'language-of-page','3.1.2':'language-of-parts','3.1.3':'unusual-words','3.1.4':'abbreviations','3.1.5':'reading-level','3.1.6':'pronunciation','3.2.1':'on-focus','3.2.2':'on-input','3.2.3':'consistent-navigation','3.2.4':'consistent-identification','3.2.5':'change-on-request','3.2.6':'consistent-help','3.3.1':'error-identification','3.3.2':'labels-or-instructions','3.3.3':'error-suggestion','3.3.4':'error-prevention-legal-financial-data','3.3.5':'help','3.3.6':'error-prevention-all','3.3.7':'redundant-entry','3.3.8':'accessible-authentication-minimum','3.3.9':'accessible-authentication-enhanced','4.1.1':'parsing','4.1.2':'name-role-value','4.1.3':'status-messages'};
+    const tbody = document.querySelector('#linhas');
+    const filtros = ['busca','principio','nivel','teste'].map(id => document.querySelector('#'+id));
+    function renderizar() {
+      const [busca,principio,nivel,teste] = filtros.map(el => el.value.trim().toLocaleLowerCase('pt-BR'));
+      const filtrados = dados.filter(d => {
+        const p = principios[d[0][0]];
+        const texto = [d[0],d[1],d[2],d[4],d[5],d[6],p].join(' ').toLocaleLowerCase('pt-BR');
+        return (!busca || texto.includes(busca)) && (!principio || p.toLocaleLowerCase('pt-BR')===principio) && (!nivel || d[3].toLowerCase()===nivel) && (!teste || d[5].toLocaleLowerCase('pt-BR')===teste);
+      });
+      tbody.replaceChildren(...filtrados.map(d => {
+        const tr=document.createElement('tr');
+        const p=principios[d[0][0]];
+        const ativo=d[3]!=='Removido';
+        const celulas=[`<strong>${d[0]}</strong><br>${d[1]}`,`${p}<br><span class="tag">${d[2]}</span>`,`<span class="tag${ativo?'':' removed'}">${d[3]}</span>`,d[4],d[5],ativo?'Aplicável somente se houver falha confirmada':'Excluído da fórmula',d[6],`<a href="https://www.w3.org/WAI/WCAG22/Understanding/${slug[d[0]]}.html" lang="en">Understanding ${d[0]}</a>`];
+        celulas.forEach(html => { const td=document.createElement('td'); td.innerHTML=html; tr.append(td); });
+        return tr;
+      }));
+      document.querySelector('#resultado').textContent=`${filtrados.length} de ${dados.length} critérios exibidos.`;
+    }
+    filtros.forEach(el => el.addEventListener(el.tagName==='INPUT'?'input':'change',renderizar));
+    renderizar();
+  </script>
+</body>
+</html>
