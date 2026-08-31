@@ -50,7 +50,7 @@
   <header>
     <p class="eyebrow">OmniSight · definição de produto · versão 0.1.0</p>
     <h1>Matriz WCAG 2.2, score e adaptações</h1>
-    <p class="lede">Contrato inicial entre scanner, score explicável e extensão adaptativa. A matriz cobre os 86 critérios ativos da WCAG 2.2 e mantém o critério 4.1.1 apenas como registro histórico.</p>
+    <p class="lede">Contrato inicial entre scanner, score explicável e extensão adaptativa. O escopo do produto contém somente verificações tecnicamente factíveis; os 86 critérios ativos da WCAG 2.2 permanecem abaixo apenas como referência de cobertura e limites.</p>
     <p class="warning"><strong>Limite de interpretação:</strong> o score indica barreiras observadas em uma página e não certifica conformidade. Critérios que exigem contexto, julgamento humano ou tecnologia assistiva permanecem como “revisão necessária” até haver evidência.</p>
   </header>
   <main id="conteudo">
@@ -58,9 +58,55 @@
       <h2 id="decisoes">Decisões principais</h2>
       <div class="grid">
         <article class="card"><h3>Unidade avaliada</h3><p>Uma página renderizada, com URL normalizada, viewport, estado autenticado declarado, data e versões da engine, regras e fórmula.</p></article>
-        <article class="card"><h3>Meta do produto</h3><p>Priorizar nível <strong>AA</strong> no MVP, sem ocultar critérios AAA úteis nem inferir conformidade por amostragem.</p></article>
+        <article class="card"><h3>Meta do produto</h3><p>Automatizar um núcleo técnico de nível <strong>A/AA</strong>. Critérios contextuais podem receber indícios, mas não entram como regras prometidas pelo MVP.</p></article>
         <article class="card"><h3>Dois resultados separados</h3><p><strong>Score da página</strong> mede evidências. <strong>Perfil adaptativo</strong> registra preferências do usuário e nunca melhora artificialmente a nota.</p></article>
         <article class="card"><h3>Reversibilidade</h3><p>Toda adaptação deve ser local, desligável imediatamente, persistida por domínio somente por escolha do usuário e sem executar ações de negócio.</p></article>
+      </div>
+    </section>
+
+    <section aria-labelledby="fluxo-produto">
+      <h2 id="fluxo-produto">Fluxo das sete features</h2>
+      <div class="table-wrap">
+        <table>
+          <caption>Entrada, processamento e saída esperada por capacidade</caption>
+          <thead><tr><th>Feature</th><th>O que o MVP faz</th><th>Parâmetros principais</th><th>Saída e limite</th></tr></thead>
+          <tbody>
+            <tr><td>1. Scanner automático</td><td>Renderiza uma página isolada e executa somente as regras objetivas da matriz de escopo técnico.</td><td>URL, viewport, estado da página, versões da engine e regras.</td><td>Falhas confirmadas e indícios. Não declara conformidade integral.</td></tr>
+            <tr><td>2. Score e severidade</td><td>Calcula a nota apenas com falhas confirmadas e mostra cobertura.</td><td>Nível, impacto, confiança, incidência, aplicabilidade e versão da fórmula.</td><td>Score geral e por POUR; revisões pendentes ficam fora da penalização.</td></tr>
+            <tr><td>3. Explicação e correção</td><td>Relaciona cada regra a impacto, pessoas afetadas e correção técnica revisada.</td><td>ID da regra, WCAG relacionada, evidência e tecnologia encontrada.</td><td>Orientação e exemplo; não inventa texto alternativo, rótulo ou intenção.</td></tr>
+            <tr><td>4. Identificação visual</td><td>Destaca o elemento em preview isolado por seletor e evidência reproduzível.</td><td>Seletor estável, bounding box, viewport e estado capturado.</td><td>Overlay visual mais alternativa textual; nunca executa scripts no contexto da aplicação.</td></tr>
+            <tr><td>5. Simulador educativo</td><td>Aplica filtros de baixa acuidade, contraste reduzido e deficiências de visão de cores.</td><td>Intensidade ajustável, tipo de filtro e restauração.</td><td>Comparação educativa, sempre com aviso de que não reproduz a experiência de uma pessoa.</td></tr>
+            <tr><td>6. Dashboard e evolução</td><td>Compara scans compatíveis da mesma página.</td><td>Versões, URL normalizada, viewport, data, score, cobertura e fingerprint do achado.</td><td>Novos, persistentes e corrigidos; quebra de série quando parâmetros incompatíveis.</td></tr>
+            <tr><td>7. Extensão adaptativa</td><td>Aplica preferências visuais e de interação localmente, sob comando do usuário.</td><td>Perfil, intensidade, domínio, exceções, conflitos e versão.</td><td>Adaptação reversível; não altera o score nem afirma corrigir o código do site.</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section aria-labelledby="escopo-scanner">
+      <h2 id="escopo-scanner">Escopo técnico do scanner no MVP</h2>
+      <p class="note">Estas são as regras que a aplicação pode implementar e testar de forma determinística. “Indício” significa que o scanner localiza candidatos para inspeção, sem afirmar falha.</p>
+      <div class="table-wrap">
+        <table>
+          <caption>Regras automatizadas e indícios selecionados</caption>
+          <thead><tr><th>Regra</th><th>WCAG essencial</th><th>Método técnico</th><th>Resultado permitido</th></tr></thead>
+          <tbody>
+            <tr><td>Imagem sem alternativa declarada</td><td>1.1.1 A</td><td>Detectar <code>img</code>/<code>area</code>/<code>input[type=image]</code> sem mecanismo de nome; valor presente, mas possivelmente inadequado, vira indício.</td><td>Falha estrutural ou revisão do conteúdo.</td></tr>
+            <tr><td>Estrutura semântica básica</td><td>1.3.1 A</td><td>Inspecionar headings, listas, tabelas, landmarks e relações programáticas reconhecíveis.</td><td>Falha objetiva quando falta relação exigida; hierarquia estranha é indício.</td></tr>
+            <tr><td>Campo sem nome acessível</td><td>1.3.1 A; 3.3.2 A; 4.1.2 A</td><td>Calcular nome acessível de controles e associação entre rótulo e campo.</td><td>Falha confirmada quando o nome está vazio; qualidade do rótulo exige revisão.</td></tr>
+            <tr><td>Controle ou link sem nome</td><td>2.4.4 A; 4.1.2 A</td><td>Calcular nome, função e valor pela árvore de acessibilidade.</td><td>Falha quando vazio ou função inválida; finalidade ambígua é indício.</td></tr>
+            <tr><td>Idioma da página ausente ou inválido</td><td>3.1.1 A</td><td>Validar <code>html[lang]</code> como tag de idioma reconhecível.</td><td>Falha estrutural; correspondência com o conteúdo é indício.</td></tr>
+            <tr><td>Título de página ausente</td><td>2.4.2 A</td><td>Verificar <code>title</code> não vazio no documento.</td><td>Falha estrutural; qualidade e especificidade exigem revisão.</td></tr>
+            <tr><td>Contraste de texto</td><td>1.4.3 AA</td><td>Calcular cores renderizadas e razão de luminância: 4,5:1 para texto comum e 3:1 para texto grande, respeitando exceções.</td><td>Falha apenas quando primeiro plano e fundo forem determináveis.</td></tr>
+            <tr><td>Contraste de interface</td><td>1.4.11 AA</td><td>Calcular contraste 3:1 de componentes e indicadores essenciais quando as cores forem determináveis.</td><td>Falha confirmada ou indício para fundos complexos.</td></tr>
+            <tr><td>Redimensionamento e reflow</td><td>1.4.4 AA; 1.4.10 AA</td><td>Testar texto a 200% e viewport de 320 CSS px, procurando corte, sobreposição e rolagem bidimensional indevida.</td><td>Falha visual reproduzível, com captura e elemento.</td></tr>
+            <tr><td>Compatibilidade com espaçamento</td><td>1.4.12 AA</td><td>Aplicar linha 1,5; parágrafo 2 vezes o tamanho da fonte; letras 0,12 em; palavras 0,16 em e detectar perda/corte.</td><td>Falha visual reproduzível; os valores são de teste, não preferência obrigatória.</td></tr>
+            <tr><td>Foco visível e não totalmente oculto</td><td>2.4.7 AA; 2.4.11 AA</td><td>Percorrer controles por teclado, comparar pixels/estilos no foco e verificar bounding boxes/oclusão.</td><td>Falha em estados reproduzíveis; ordem lógica continua como revisão.</td></tr>
+            <tr><td>Tamanho mínimo do alvo</td><td>2.5.8 AA</td><td>Medir caixa e espaçamento efetivo contra 24 × 24 CSS px, aplicando as exceções normativas.</td><td>Falha ou indício quando a exceção depender de contexto.</td></tr>
+            <tr><td>Movimento e autoplay detectáveis</td><td>1.4.2 A; 2.2.2 A; 2.3.3 AAA informativo</td><td>Identificar mídia automática, animações CSS/WAAPI e resposta a <code>prefers-reduced-motion</code>.</td><td>Indício; controle, duração e essencialidade podem exigir revisão.</td></tr>
+            <tr><td>Erros de ARIA verificáveis</td><td>4.1.2 A; 4.1.3 AA</td><td>Validar funções, atributos, referências, estados e regiões de status reconhecíveis.</td><td>Falha sintática/estrutural; anúncio efetivo requer tecnologia assistiva.</td></tr>
+          </tbody>
+        </table>
       </div>
     </section>
 
@@ -81,7 +127,7 @@
           </tbody>
         </table>
       </div>
-      <p><strong>Penalidade por achado:</strong> <code>peso do nível × impacto × confiança × incidência × estado</code>. O score de cada princípio POUR é <code>100 × (1 − penalidades confirmadas / penalidade máxima aplicável)</code>, limitado entre 0 e 100. O score geral é a média ponderada dos princípios pelo total de peso aplicável. O relatório deve sempre exibir também cobertura automática, quantidade de revisões pendentes, critérios não aplicáveis e a versão da fórmula.</p>
+      <p><strong>Penalidade por achado:</strong> <code>peso do nível × impacto × confiança × incidência × estado</code>. O score de cada princípio POUR é <code>100 × (1 − penalidades confirmadas / penalidade máxima aplicável)</code>, limitado entre 0 e 100. O denominador considera somente as regras versionadas que o scanner realmente executou e conseguiu avaliar na página — nunca todos os critérios WCAG. O score geral é a média ponderada dos princípios pelo total de peso avaliado. O relatório deve sempre exibir também quantidade de regras executadas, cobertura técnica, revisões pendentes, itens não aplicáveis e a versão da fórmula.</p>
     </section>
 
     <section aria-labelledby="adaptacoes">
@@ -96,11 +142,32 @@
         <article class="card"><h3>A7 · Mídia</h3><p>Expor controles e trilhas já disponíveis, preferir legendas e transcrições existentes. A extensão não deve inventar alternativa como se fosse fornecida pelo autor.</p></article>
         <article class="card"><h3>Sem adaptação segura</h3><p>Problemas sem correção local confiável recebem explicação e orientação. A extensão não cria rótulos, textos alternativos ou decisões semânticas sem evidência.</p></article>
       </div>
+      <h3>Parâmetros essenciais e limites</h3>
+      <div class="table-wrap">
+        <table>
+          <caption>Controles configuráveis pelo usuário</caption>
+          <thead><tr><th>Controle</th><th>Faixa inicial proposta</th><th>Padrão e proteção</th><th>Base</th></tr></thead>
+          <tbody>
+            <tr><td>Tamanho do texto</td><td>100% a 200%, passos de 10%</td><td>100%; testar corte, sobreposição e reflow antes de persistir.</td><td>WCAG 1.4.4 e relatos de baixa visão/dislexia.</td></tr>
+            <tr><td>Altura de linha</td><td>1,2 a 2,0</td><td>Sem alteração; atalho recomendado de 1,5.</td><td>WCAG 1.4.12/1.4.8 e relatos de leitura.</td></tr>
+            <tr><td>Espaçamento de letras</td><td>0 a 0,12 em</td><td>Sem alteração; evitar excesso que prejudique reconhecimento.</td><td>Teste WCAG 1.4.12 e BDA.</td></tr>
+            <tr><td>Espaçamento de palavras</td><td>0 a 0,16 em</td><td>Sem alteração; preservar quebra e idioma.</td><td>Teste WCAG 1.4.12 e BDA.</td></tr>
+            <tr><td>Espaçamento de parágrafos</td><td>1 a 2 vezes o tamanho da fonte</td><td>Sem alteração; valor 2 para teste de compatibilidade.</td><td>WCAG 1.4.12.</td></tr>
+            <tr><td>Largura de leitura</td><td>45 a 80 caracteres</td><td>Modo de leitura opcional; nunca forçar em interfaces operacionais.</td><td>WCAG 1.4.8 AAA como preferência, não requisito do MVP.</td></tr>
+            <tr><td>Fonte</td><td>Original, sans-serif do sistema, Atkinson, Lexend ou OpenDyslexic quando empacotada</td><td>Original; nenhuma fonte é declarada universalmente melhor. Empacotar localmente evita bloqueio por CSP.</td><td>W3C, BDA e relatos de usuários.</td></tr>
+            <tr><td>Cores e contraste</td><td>Original, escuro, claro, alto contraste e cores personalizadas</td><td>Original; validar contraste, respeitar <code>forced-colors</code> e não depender só de cor.</td><td>WCAG 1.4.1/1.4.3/1.4.11 e baixa visão.</td></tr>
+            <tr><td>Sobreposição de cor</td><td>Opacidade 0% a 30%, cor escolhida pelo usuário</td><td>Desligada; preferência individual, sem alegação clínica.</td><td>Recorrência em ferramentas e relatos de dislexia/fotossensibilidade.</td></tr>
+            <tr><td>Guia de leitura</td><td>Linha ou máscara ajustável</td><td>Desligado; nunca bloquear foco, seleção ou tecnologia assistiva.</td><td>Relatos recorrentes de dislexia e dificuldade de atenção.</td></tr>
+            <tr><td>Foco, links e cursor</td><td>Indicador reforçado, sublinhado e cursor em 1×/1,5×/2×</td><td>Desligado; não alterar função nem nome acessível.</td><td>WCAG 1.4.1, 2.4.7, 2.4.11 e baixa visão.</td></tr>
+            <tr><td>Movimento</td><td>Original ou reduzido</td><td>Herdar <code>prefers-reduced-motion</code>; permitir escolha explícita.</td><td>WCAG 2.2.2 e preferências do sistema.</td></tr>
+          </tbody>
+        </table>
+      </div>
     </section>
 
     <section aria-labelledby="matriz">
-      <h2 id="matriz">Matriz completa de critérios</h2>
-      <p id="matrix-help" class="note">Use os filtros para reduzir a tabela. A coluna “teste” indica a estratégia inicial do OmniSight, não uma propriedade normativa da WCAG.</p>
+      <h2 id="matriz">Referência completa de cobertura e limites</h2>
+      <p id="matrix-help" class="note">Esta tabela preserva a rastreabilidade da tarefa de compliance; ela não é o backlog do scanner. Somente as regras da seção “Escopo técnico do scanner no MVP” são compromisso de automação. “Semiautomático” e “manual” documentam limites e oportunidades futuras de auditoria assistida.</p>
       <div class="controls" role="search" aria-label="Filtrar critérios">
         <label>Buscar<input id="busca" type="search" placeholder="Ex.: contraste, 2.4.7" aria-describedby="matrix-help"></label>
         <label>Princípio<select id="principio"><option value="">Todos</option><option>Perceptível</option><option>Operável</option><option>Compreensível</option><option>Robusto</option></select></label>
@@ -126,6 +193,20 @@
         <li>Comparar scores apenas quando fórmula, regras e parâmetros forem compatíveis; caso contrário, informar a quebra de série.</li>
         <li>Testar adaptações com teclado, zoom/reflow, leitor de tela e páginas representativas; registrar conflitos e oferecer restauração.</li>
         <li>Não afirmar conformidade WCAG integral com base no scanner, no score ou nas adaptações.</li>
+      </ul>
+    </section>
+
+    <section aria-labelledby="pesquisa">
+      <h2 id="pesquisa">Síntese da pesquisa com usuários e referências</h2>
+      <p>Relatos em comunidades de dislexia destacam que trocar apenas a fonte é insuficiente: espaçamentos, tamanho, guia de leitura, cor de fundo e persistência por site aparecem de forma recorrente. Esses relatos são evidência qualitativa para descoberta de produto, não recomendação clínica nem requisito normativo.</p>
+      <ul>
+        <li><a href="https://www.reddit.com/r/Dyslexia/comments/1r8211t/i_built_a_free_chrome_extension_for_dyslexic/">Discussão no r/Dyslexia sobre fonte, espaçamentos, overlays e guia de leitura</a>.</li>
+        <li><a href="https://www.reddit.com/r/chrome_extensions/comments/1vskdrk/i_built_clarity_a_free_chrome_extension_for/">Discussão sobre modo de leitura, ajustes tipográficos, persistência e limitações de CSP</a>.</li>
+        <li><a href="https://www.w3.org/TR/low-vision-needs/">W3C — necessidades de pessoas com baixa visão</a>.</li>
+        <li><a href="https://www.w3.org/WAI/people-use-web/abilities-barriers/visual/">W3C — barreiras e estratégias relacionadas a deficiências visuais</a>.</li>
+        <li><a href="https://www.w3.org/WAI/WCAG22/Understanding/visual-presentation.html">W3C — apresentação visual configurável</a>.</li>
+        <li><a href="https://cdn.bdadyslexia.org.uk/uploads/documents/Advice/style-guide/BDA-Style-Guide-2023.pdf?v=1680084017">British Dyslexia Association — guia de estilo</a>.</li>
+        <li><a href="https://developer.mozilla.org/en-US/docs/Web/Accessibility/Guides/Browsing_safely">MDN — preferências para navegação segura</a>.</li>
       </ul>
     </section>
   </main>
