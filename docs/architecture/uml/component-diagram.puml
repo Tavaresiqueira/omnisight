@@ -1,0 +1,66 @@
+@startuml OmniSightComponents
+title OmniSight — Componentes e Fronteiras do MVP
+skinparam monochrome true
+skinparam shadowing false
+skinparam componentStyle rectangle
+
+actor Usuario
+
+rectangle "Dispositivo do usuário" {
+  component "Aplicação web\n(frontend acessível)" as Frontend
+  component "Extensão\n(adaptação local)" as Extension
+  database "Preferências locais" as LocalPrefs
+}
+
+rectangle "Plano de controle" {
+  component "API modular" as API
+  component "Identidade e\norganizações" as Identity
+  component "Orquestração\nde scans" as Orchestrator
+  component "Resultados e\ncatálogo de regras" as Results
+  queue "Fila de scans" as Queue
+  database "Banco\ntransacional" as Database
+  collections "Storage de evidências\n(opcional e com expiração)" as Storage
+}
+
+rectangle "Zona isolada de execução" {
+  component "Worker de scan" as Worker
+  component "Navegador isolado" as Browser
+  component "Engine de regras\nversionadas" as Engine
+}
+
+cloud "Site externo\nnão confiável" as Target
+
+Usuario --> Frontend : solicita e consulta scan
+Usuario --> Extension : ativa adaptações
+Extension --> LocalPrefs : persiste perfil
+Frontend --> API : HTTPS autenticado
+API --> Identity : autentica e autoriza
+API --> Orchestrator : cria e controla scan
+API --> Results : consulta relatório
+Identity --> Database
+Orchestrator --> Database
+Results --> Database
+Orchestrator --> Queue : publica ID e versão
+Queue --> Worker : entrega idempotente
+Worker --> Browser : coleta com limites
+Browser --> Target : egress restrito e\nredirect revalidado
+Worker --> Engine : avalia documento
+Worker --> API : envia resultado autenticado
+Results --> Storage : evidência grande por\nreferência opaca
+
+note right of API
+  Toda consulta é delimitada
+  por organização no servidor.
+end note
+
+note right of Worker
+  Sem credenciais da aplicação,
+  sem acesso administrativo ao banco
+  e com orçamento de recursos.
+end note
+
+note bottom of Extension
+  Não envia preferências locais
+  sem consentimento explícito.
+end note
+@enduml
