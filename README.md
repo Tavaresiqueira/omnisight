@@ -11,4 +11,6 @@ explicáveis, histórico de scans e adaptações locais reversíveis.
 - [Requisitos brasileiros complementares](docs/compliance/brazilian-accessibility-requirements.md)
 - [Política de conformidade e disclaimer](docs/compliance/conformity-policy-and-disclaimer.md)
 - [ADRs de arquitetura](docs/architecture/adr/README.md)
+- [Modelo de domínio e dados](docs/architecture/domain-model.md)
+- [Contrato OpenAPI inicial](docs/architecture/openapi/openapi.json)
 - [Diagramas UML](docs/architecture/uml/README.md)
