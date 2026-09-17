@@ -1,0 +1,428 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "OmniSight Control Plane API",
+    "version": "0.1.0",
+    "description": "Contrato inicial para sites e scans. A organização é determinada pela credencial autenticada; clientes não enviam organizationId."
+  },
+  "servers": [
+    {
+      "url": "https://api.example.invalid/v1",
+      "description": "Placeholder de ambiente; o domínio será definido no ADR de infraestrutura."
+    }
+  ],
+  "security": [
+    {
+      "bearerAuth": []
+    }
+  ],
+  "paths": {
+    "/sites": {
+      "get": {
+        "operationId": "listSites",
+        "summary": "Lista sites da organização autenticada",
+        "responses": {
+          "200": {
+            "description": "Página de sites autorizados",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SitePage"
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          }
+        }
+      },
+      "post": {
+        "operationId": "createSite",
+        "summary": "Cadastra um site HTTPS para acompanhamento",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateSiteRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Site criado",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Site"
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "409": {
+            "$ref": "#/components/responses/SiteAlreadyExists"
+          },
+          "422": {
+            "$ref": "#/components/responses/InvalidDestination"
+          }
+        }
+      }
+    },
+    "/sites/{siteId}/scans": {
+      "post": {
+        "operationId": "requestScan",
+        "summary": "Solicita scan assíncrono de um site autorizado",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/SiteId"
+          },
+          {
+            "$ref": "#/components/parameters/IdempotencyKey"
+          }
+        ],
+        "requestBody": {
+          "required": false,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RequestScanRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "202": {
+            "description": "Scan aceito e enfileirado",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Scan"
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "404": {
+            "$ref": "#/components/responses/SiteNotFound"
+          },
+          "409": {
+            "$ref": "#/components/responses/IdempotencyConflict"
+          },
+          "422": {
+            "$ref": "#/components/responses/InvalidDestination"
+          }
+        }
+      }
+    },
+    "/scans/{scanId}": {
+      "get": {
+        "operationId": "getScan",
+        "summary": "Consulta o estado e o resultado de um scan autorizado",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/ScanId"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Scan autorizado",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Scan"
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "404": {
+            "$ref": "#/components/responses/ScanNotFound"
+          }
+        }
+      },
+      "delete": {
+        "operationId": "cancelScan",
+        "summary": "Cancela um scan ainda não finalizado",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/ScanId"
+          }
+        ],
+        "responses": {
+          "202": {
+            "description": "Cancelamento aceito",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Scan"
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "404": {
+            "$ref": "#/components/responses/ScanNotFound"
+          },
+          "409": {
+            "$ref": "#/components/responses/ScanAlreadyFinal"
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "bearerAuth": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "JWT"
+      }
+    },
+    "parameters": {
+      "SiteId": {
+        "name": "siteId",
+        "in": "path",
+        "required": true,
+        "schema": {
+          "type": "string",
+          "format": "uuid"
+        }
+      },
+      "ScanId": {
+        "name": "scanId",
+        "in": "path",
+        "required": true,
+        "schema": {
+          "type": "string",
+          "format": "uuid"
+        }
+      },
+      "IdempotencyKey": {
+        "name": "Idempotency-Key",
+        "in": "header",
+        "required": true,
+        "schema": {
+          "type": "string",
+          "minLength": 16,
+          "maxLength": 128
+        },
+        "description": "Chave única por organização e solicitação lógica de scan."
+      }
+    },
+    "schemas": {
+      "CreateSiteRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["url", "displayName"],
+        "properties": {
+        "url": {
+          "type": "string",
+          "format": "uri",
+          "pattern": "^https://",
+          "maxLength": 2048,
+          "description": "URL HTTPS. O servidor normaliza e valida antes de persistir."
+        },
+          "displayName": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 120
+          }
+        }
+      },
+      "RequestScanRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "viewport": {
+            "type": "string",
+            "enum": ["desktop"],
+            "default": "desktop",
+            "description": "O primeiro recorte do MVP usa somente viewport desktop versionado."
+          }
+        }
+      },
+      "Site": {
+        "type": "object",
+        "required": ["id", "displayName", "normalizedUrl", "createdAt"],
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "displayName": {
+            "type": "string"
+          },
+          "normalizedUrl": {
+            "type": "string",
+            "format": "uri"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "SitePage": {
+        "type": "object",
+        "required": ["items"],
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Site"
+            }
+          },
+          "nextCursor": {
+            "type": ["string", "null"]
+          }
+        }
+      },
+      "Scan": {
+        "type": "object",
+        "required": ["id", "siteId", "status", "requestedAt", "correlationId"],
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "siteId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "status": {
+            "type": "string",
+            "enum": ["queued", "running", "completed", "failed", "cancelled", "expired"]
+          },
+          "requestedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "startedAt": {
+            "type": ["string", "null"],
+            "format": "date-time"
+          },
+          "completedAt": {
+            "type": ["string", "null"],
+            "format": "date-time"
+          },
+          "correlationId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "failure": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/Problem"
+              }
+            ]
+          }
+        }
+      },
+      "Problem": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["code", "message", "correlationId"],
+        "properties": {
+          "code": {
+            "type": "string",
+            "enum": ["UNAUTHENTICATED", "SITE_NOT_FOUND", "SCAN_NOT_FOUND", "DESTINATION_NOT_ALLOWED", "INVALID_URL", "SITE_ALREADY_EXISTS", "IDEMPOTENCY_CONFLICT", "SCAN_ALREADY_FINAL"]
+          },
+          "message": {
+            "type": "string",
+            "description": "Mensagem em português do Brasil, clara e acionável."
+          },
+          "correlationId": {
+            "type": "string",
+            "format": "uuid"
+          }
+        }
+      }
+    },
+    "responses": {
+      "Unauthorized": {
+        "description": "Credencial ausente ou inválida",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/Problem"
+            }
+          }
+        }
+      },
+      "SiteNotFound": {
+        "description": "Site não encontrado na organização autorizada",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/Problem"
+            }
+          }
+        }
+      },
+      "ScanNotFound": {
+        "description": "Scan não encontrado na organização autorizada",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/Problem"
+            }
+          }
+        }
+      },
+      "InvalidDestination": {
+        "description": "URL inválida ou destino não permitido",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/Problem"
+            }
+          }
+        }
+      },
+      "SiteAlreadyExists": {
+        "description": "A organização já possui o site normalizado",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/Problem"
+            }
+          }
+        }
+      },
+      "IdempotencyConflict": {
+        "description": "A chave de idempotência foi reutilizada com outra solicitação",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/Problem"
+            }
+          }
+        }
+      },
+      "ScanAlreadyFinal": {
+        "description": "O scan já está em estado final",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/Problem"
+            }
+          }
+        }
+      }
+    }
+  }
+}
