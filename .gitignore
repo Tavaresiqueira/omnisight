@@ -9,9 +9,9 @@ htmlcov/
 
 node_modules/
 .next/
+apps/web/out/
 coverage/
 *.tsbuildinfo
 
 .DS_Store
 *.log
-

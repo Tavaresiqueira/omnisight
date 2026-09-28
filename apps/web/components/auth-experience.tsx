@@ -9,6 +9,7 @@ type Mode = "login" | "register";
 
 const DEMO_PASSWORD =
   process.env.NEXT_PUBLIC_DEMO_PASSWORD ?? "Demo-OmniSight-2026!";
+const PREVIEW_MODE = process.env.NEXT_PUBLIC_PREVIEW_MODE === "true";
 
 const demoAccounts = {
   extension_user: "extension.demo@omnisight.local",
@@ -153,6 +154,11 @@ export function AuthExperience() {
             </div>
           ) : (
             <>
+              {PREVIEW_MODE && (
+                <p className="intro-note" role="status">
+                  Prévia visual temporária · autenticação desativada nesta demonstração.
+                </p>
+              )}
               <header className="auth-heading">
                 <p className="eyebrow">Bem-vindo</p>
                 <h2 id="auth-title">Acesse o OmniSight</h2>
@@ -254,7 +260,11 @@ export function AuthExperience() {
                   </p>
                 )}
 
-                <button className="primary-button" type="submit" disabled={pending}>
+                <button
+                  className="primary-button"
+                  type="submit"
+                  disabled={pending || PREVIEW_MODE}
+                >
                   {pending
                     ? "Conectando…"
                     : mode === "login"
@@ -273,7 +283,7 @@ export function AuthExperience() {
                     <button
                       type="button"
                       className="demo-button"
-                      disabled={pending}
+                      disabled={pending || PREVIEW_MODE}
                       onClick={() => enterDemo("extension_user")}
                     >
                       <span aria-hidden="true">↗</span>
@@ -285,7 +295,7 @@ export function AuthExperience() {
                     <button
                       type="button"
                       className="demo-button"
-                      disabled={pending}
+                      disabled={pending || PREVIEW_MODE}
                       onClick={() => enterDemo("platform_developer")}
                     >
                       <span aria-hidden="true">⌘</span>
