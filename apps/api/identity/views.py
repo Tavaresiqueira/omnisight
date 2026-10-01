@@ -7,6 +7,7 @@ from rest_framework.views import APIView
 
 from identity.models import Membership, Organization
 from identity.serializers import (
+    DemoLoginSerializer,
     LoginSerializer,
     OrganizationSerializer,
     RegistrationSerializer,
@@ -44,6 +45,26 @@ class LoginView(APIView):
         return Response(auth_payload(serializer.validated_data["user"]))
 
 
+class DemoLoginView(APIView):
+    permission_classes = [AllowAny]
+
+    def post(self, request):
+        validator = DemoLoginSerializer(data=request.data)
+        validator.is_valid(raise_exception=True)
+        user = (
+            Membership.objects.filter(
+                user__is_demo=True,
+                user__account_type=validator.validated_data["account_type"],
+            )
+            .select_related("user")
+            .order_by("created_at")
+            .first()
+        )
+        if not user:
+            return Response(status=status.HTTP_404_NOT_FOUND)
+        return Response(auth_payload(user.user))
+
+
 class MeView(APIView):
     def get(self, request):
         return Response(auth_payload(request.user))
@@ -67,4 +88,3 @@ class OrganizationDetailView(APIView):
                 "role": membership.role,
             }
         )
-

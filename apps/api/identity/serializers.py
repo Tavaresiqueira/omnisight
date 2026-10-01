@@ -60,3 +60,6 @@ class LoginSerializer(serializers.Serializer):
         attrs["user"] = user
         return attrs
 
+
+class DemoLoginSerializer(serializers.Serializer):
+    account_type = serializers.ChoiceField(choices=User.AccountType.choices)
