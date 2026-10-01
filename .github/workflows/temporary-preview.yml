@@ -24,11 +24,12 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
-      - name: Export visual-only login preview
+      - name: Export login preview
         run: npm run build:web
         env:
           GITHUB_PAGES: "true"
           NEXT_PUBLIC_PREVIEW_MODE: "true"
+          NEXT_PUBLIC_API_URL: ${{ vars.OMNISIGHT_API_URL }}
       - uses: actions/upload-pages-artifact@v3
         with:
           path: apps/web/out
