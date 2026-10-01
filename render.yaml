@@ -1,0 +1,26 @@
+databases:
+  - name: omnisight-preview-db
+    plan: free
+    databaseName: omnisight_preview
+    user: omnisight_preview
+
+services:
+  - type: web
+    name: omnisight-api-preview
+    runtime: python
+    plan: free
+    buildCommand: pip install -r apps/api/requirements.txt
+    startCommand: python apps/api/manage.py migrate --noinput && python apps/api/manage.py seed_demo_users && gunicorn config.wsgi:application --chdir apps/api --bind 0.0.0.0:$PORT
+    envVars:
+      - key: DATABASE_URL
+        fromDatabase:
+          name: omnisight-preview-db
+          property: connectionString
+      - key: DJANGO_SECRET_KEY
+        generateValue: true
+      - key: DJANGO_DEBUG
+        value: "false"
+      - key: OMNISIGHT_DEMO_PASSWORD
+        generateValue: true
+      - key: CORS_ALLOWED_ORIGINS
+        value: https://tavaresiqueira.github.io
