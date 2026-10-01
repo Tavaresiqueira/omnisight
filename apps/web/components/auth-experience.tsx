@@ -1,25 +1,12 @@
 "use client";
 
-import { FormEvent, useState } from "react";
+import { FormEvent, useEffect, useState } from "react";
 
-import { AccountType, AuthResponse, postAuth } from "@/lib/api";
+import { AccountType, AuthResponse, getCurrentUser, postAuth, postDemoLogin } from "@/lib/api";
+import { WorkspaceHome } from "@/components/workspace-home";
 
 
 type Mode = "login" | "register";
-
-const DEMO_PASSWORD =
-  process.env.NEXT_PUBLIC_DEMO_PASSWORD ?? "Demo-OmniSight-2026!";
-
-const demoAccounts = {
-  extension_user: "extension.demo@omnisight.local",
-  platform_developer: "developer.demo@omnisight.local",
-} satisfies Record<AccountType, string>;
-
-const accountLabels: Record<AccountType, string> = {
-  extension_user: "Experiência com extensão",
-  platform_developer: "Auditoria de plataforma",
-};
-
 
 export function AuthExperience() {
   const [mode, setMode] = useState<Mode>("login");
@@ -28,6 +15,24 @@ export function AuthExperience() {
   const [pending, setPending] = useState(false);
   const [error, setError] = useState("");
   const [session, setSession] = useState<AuthResponse | null>(null);
+
+  useEffect(() => {
+    const token = window.sessionStorage.getItem("omnisight.token");
+    if (!token) return;
+
+    let active = true;
+    getCurrentUser(token)
+      .then((currentSession) => {
+        if (active) setSession(currentSession);
+      })
+      .catch(() => {
+        window.sessionStorage.removeItem("omnisight.token");
+      });
+
+    return () => {
+      active = false;
+    };
+  }, []);
 
   function selectMode(nextMode: Mode) {
     setMode(nextMode);
@@ -74,10 +79,17 @@ export function AuthExperience() {
   }
 
   async function enterDemo(type: AccountType) {
-    await authenticate("auth/login/", {
-      email: demoAccounts[type],
-      password: DEMO_PASSWORD,
-    });
+    setPending(true);
+    setError("");
+    try {
+      const response = await postDemoLogin(type);
+      window.sessionStorage.setItem("omnisight.token", response.token);
+      setSession(response);
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : "Não foi possível abrir a conta demo.");
+    } finally {
+      setPending(false);
+    }
   }
 
   function signOut() {
@@ -87,6 +99,7 @@ export function AuthExperience() {
   }
 
   return (
+    session ? <WorkspaceHome session={session} onSignOut={signOut} /> :
     <main id="conteudo" className="auth-shell">
       <section className="product-intro" aria-labelledby="intro-title">
         <a className="brand" href="#conteudo" aria-label="OmniSight, início">
@@ -127,32 +140,7 @@ export function AuthExperience() {
 
       <section className="auth-panel" aria-labelledby="auth-title">
         <div className="auth-card">
-          {session ? (
-            <div className="session-card" aria-live="polite">
-              <span className="success-icon" aria-hidden="true">
-                ✓
-              </span>
-              <p className="eyebrow">Sessão pronta</p>
-              <h2 id="auth-title">Olá, {session.user.display_name}.</h2>
-              <p>
-                Você entrou no espaço <strong>{session.organization.name}</strong>.
-              </p>
-              <dl className="session-details">
-                <div>
-                  <dt>Perfil</dt>
-                  <dd>{accountLabels[session.user.account_type]}</dd>
-                </div>
-                <div>
-                  <dt>Acesso</dt>
-                  <dd>{session.role === "owner" ? "Proprietário" : session.role}</dd>
-                </div>
-              </dl>
-              <button className="secondary-button" type="button" onClick={signOut}>
-                Sair e trocar de conta
-              </button>
-            </div>
-          ) : (
-            <>
+          <>
               <header className="auth-heading">
                 <p className="eyebrow">Bem-vindo</p>
                 <h2 id="auth-title">Acesse o OmniSight</h2>
@@ -297,8 +285,7 @@ export function AuthExperience() {
                   </div>
                 </div>
               )}
-            </>
-          )}
+          </>
         </div>
         <p className="privacy-note">
           Ao continuar, você concorda com o uso mínimo de dados necessário para o MVP.
