@@ -122,6 +122,45 @@ class AuthenticationAndIsolationTests(APITestCase):
         self.assertEqual(response.data["user"]["email"], self.user.email)
         self.assertEqual(response.data["organization"]["id"], str(self.organization.id))
 
+    def test_demo_login_only_issues_a_token_for_the_requested_demo_profile(self):
+        demo = User.objects.create_user(
+            email="extension.demo@omnisight.local",
+            password="Strong-pass-2026!",
+            display_name="Demo Extensão",
+            account_type=User.AccountType.EXTENSION_USER,
+            is_demo=True,
+        )
+        demo_org = Organization.objects.create(
+            name="Demo Extension Workspace",
+            slug="demo-extension-workspace",
+            account_type=demo.account_type,
+        )
+        Membership.objects.create(
+            user=demo,
+            organization=demo_org,
+            role=Membership.Role.OWNER,
+        )
+
+        response = self.client.post(
+            reverse("demo-login"),
+            {"account_type": User.AccountType.EXTENSION_USER},
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data["user"]["id"], str(demo.id))
+        self.assertEqual(response.data["user"]["account_type"], "extension_user")
+        self.assertTrue(response.data["token"])
+
+    def test_demo_login_does_not_authenticate_regular_accounts(self):
+        response = self.client.post(
+            reverse("demo-login"),
+            {"account_type": User.AccountType.PLATFORM_DEVELOPER},
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+
     def test_user_can_read_own_organization(self):
         self.login()
 
@@ -139,4 +178,3 @@ class AuthenticationAndIsolationTests(APITestCase):
         )
 
         self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
-

@@ -18,7 +18,7 @@ export type AuthResponse = {
   role: "owner" | "member" | "viewer";
 };
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000/api";
+const API_URL = (process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000/api").replace(/\/$/, "");
 
 function firstErrorMessage(value: unknown): string | null {
   if (typeof value === "string") return value;
@@ -50,3 +50,26 @@ export async function postAuth(
   return data as AuthResponse;
 }
 
+export async function postDemoLogin(accountType: AccountType): Promise<AuthResponse> {
+  const response = await fetch(`${API_URL}/auth/demo/`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ account_type: accountType }),
+  });
+  const data: unknown = await response.json().catch(() => null);
+  if (!response.ok) {
+    throw new Error(firstErrorMessage(data) ?? "Não foi possível abrir a conta demo.");
+  }
+  return data as AuthResponse;
+}
+
+export async function getCurrentUser(token: string): Promise<AuthResponse> {
+  const response = await fetch(`${API_URL}/auth/me/`, {
+    headers: { Authorization: `Token ${token}` },
+  });
+  const data: unknown = await response.json().catch(() => null);
+  if (!response.ok) {
+    throw new Error(firstErrorMessage(data) ?? "Sua sessão expirou. Entre novamente.");
+  }
+  return data as AuthResponse;
+}
