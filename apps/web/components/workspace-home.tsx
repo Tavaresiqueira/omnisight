@@ -1,3 +1,6 @@
+import { ImportReport } from './import-report';
+import { AccountControls } from './account-controls';
+import { SiteRegistration } from "./site-registration";
 import { AuthResponse } from "@/lib/api";
 
 type WorkspaceHomeProps = {
@@ -38,6 +41,10 @@ export function WorkspaceHome({ session, onSignOut }: WorkspaceHomeProps) {
             : "Ajuste como você navega e acompanhe suas preferências de acessibilidade."}
         </p>
 
+        <ImportReport/>
+        {isDeveloper && session.organization && <SiteRegistration token={session.token} canDeleteScans={session.role==='owner'} />}
+        <AccountControls session={session} onClosed={onSignOut}/>
+
         <div className="workspace-summary">
           <article className="workspace-card workspace-card-featured">
             <span className="workspace-card-icon" aria-hidden="true">{isDeveloper ? "⌕" : "◉"}</span>
@@ -49,13 +56,13 @@ export function WorkspaceHome({ session, onSignOut }: WorkspaceHomeProps) {
                 : "Suas configurações serão salvas neste espaço e poderão ser ajustadas a qualquer momento."}
             </p>
             <button className="primary-button" type="button" disabled>
-              {isDeveloper ? "Scans disponíveis em breve" : "Configurações disponíveis em breve"}
+              {isDeveloper ? "Solicite o scan na lista de sites" : "Configurações disponíveis em breve"}
             </button>
           </article>
 
           <article className="workspace-card">
             <p className="eyebrow">Espaço de trabalho</p>
-            <h2>{session.organization.name}</h2>
+            <h2>{session.organization?.name??'Sem espaço ativo'}</h2>
             <p>
               {isDeveloper
                 ? "Seu espaço para organizar sites, avaliações e melhorias."
@@ -69,8 +76,8 @@ export function WorkspaceHome({ session, onSignOut }: WorkspaceHomeProps) {
             <h2>{isDeveloper ? "Histórico de avaliações" : "Conectar a extensão"}</h2>
             <p>
               {isDeveloper
-                ? "Os resultados de scans aparecerão aqui quando o módulo de avaliação estiver disponível."
-                : "A conexão com a extensão do navegador será habilitada na próxima etapa do projeto."}
+                ? "Consulte os scans salvos na lista de sites. Diagnósticos importados da extensão ficam locais nesta versão."
+                : "Baixe a extensão experimental acima e importe um diagnóstico da aba renderizada."}
             </p>
             <span className="workspace-empty">Ainda não há itens para exibir.</span>
           </article>

@@ -37,6 +37,7 @@ INSTALLED_APPS = [
 
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
+    "identity.privacy.PrivateApiCacheMiddleware",
     "corsheaders.middleware.CorsMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",
@@ -93,6 +94,7 @@ DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 AUTH_USER_MODEL = "identity.User"
 
 REST_FRAMEWORK = {
+    "DEFAULT_THROTTLE_CLASSES": ["identity.abuse.ApiBudgetThrottle"],
     "DEFAULT_AUTHENTICATION_CLASSES": [
         "rest_framework.authentication.TokenAuthentication",
     ],
@@ -101,8 +103,27 @@ REST_FRAMEWORK = {
     ],
 }
 
+TRUST_PROXY_CLIENT_IP = os.environ.get('TRUST_PROXY_CLIENT_IP', 'false').lower() == 'true'
+AUTH_RATE_LIMITS = {'login': (10, 60), 'register': (5, 3600), 'demo': (10, 60)}
+AUTH_RATE_LIMITS['closure'] = (10, 60)
+SCAN_RATE_LIMITS = {'user': 10, 'organization': 30, 'domain': 5, 'ip': 30}
+SCAN_ACTIVE_ORGANIZATION_LIMIT = 3
+SCAN_ACTIVE_GLOBAL_LIMIT = 10
+SCAN_RETENTION_DAYS = int(os.environ.get('SCAN_RETENTION_DAYS', '30'))
+ABUSE_RETENTION_DAYS = int(os.environ.get('ABUSE_RETENTION_DAYS', '7'))
+DELETION_LEDGER_PATH = os.environ.get('DELETION_LEDGER_PATH', '')
+DELETION_LEDGER_KEY = os.environ.get('DELETION_LEDGER_KEY', '')
+if not 1 <= SCAN_RETENTION_DAYS <= 3650 or not 1 <= ABUSE_RETENTION_DAYS <= 365:
+    raise ValueError('Configure retenção de scans entre 1 e 3650 dias e contadores entre 1 e 365 dias.')
+
 CORS_ALLOWED_ORIGINS = [
     origin.strip()
     for origin in os.environ.get("CORS_ALLOWED_ORIGINS", "http://localhost:3000").split(",")
     if origin.strip()
 ]
+
+# Health is used only by the private container network / load balancer.
+SECURE_REDIRECT_EXEMPT = [r"^api/health/$"]
+DEMO_LOGIN_ENABLED = os.environ.get('DEMO_LOGIN_ENABLED', str(DEBUG)).lower() == 'true'
+if not DEBUG and (SECRET_KEY == 'unsafe-development-key' or len(SECRET_KEY) < 50):
+    raise ValueError('Defina DJANGO_SECRET_KEY de produção com pelo menos 50 caracteres.')

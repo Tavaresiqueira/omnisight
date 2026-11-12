@@ -1,0 +1,167 @@
+name: omnisight
+x-api: &api
+  build:
+    context: ..
+    dockerfile: deploy/api.Dockerfile
+  environment: &api-env
+    DJANGO_DEBUG: "false"
+    DJANGO_SECRET_KEY: ${DJANGO_SECRET_KEY:?Configure DJANGO_SECRET_KEY}
+    DJANGO_ALLOWED_HOSTS: ${APP_DOMAIN:?Configure APP_DOMAIN},api,localhost,127.0.0.1
+    DATABASE_URL: postgresql://omnisight:${POSTGRES_PASSWORD:?Configure POSTGRES_PASSWORD}@db:5432/omnisight
+    CORS_ALLOWED_ORIGINS: https://${APP_DOMAIN}
+    DEMO_LOGIN_ENABLED: "false"
+    TRUST_PROXY_CLIENT_IP: "true"
+    SCAN_RETENTION_DAYS: ${SCAN_RETENTION_DAYS:-30}
+    ABUSE_RETENTION_DAYS: ${ABUSE_RETENTION_DAYS:-7}
+  restart: unless-stopped
+  init: true
+  read_only: true
+  tmpfs: [/tmp:size=64m]
+  cap_drop: [ALL]
+  security_opt: [no-new-privileges:true]
+  networks: [database, egress]
+  depends_on:
+    db:
+      condition: service_healthy
+  logging:
+    driver: json-file
+    options: {max-size: 10m, max-file: "3"}
+services:
+  backup:
+    profiles: [ops]
+    build:
+      context: ..
+      dockerfile: deploy/backup.Dockerfile
+    environment:
+      PGHOST: db
+      PGUSER: omnisight
+      PGDATABASE: omnisight
+      PGPASSWORD: ${POSTGRES_PASSWORD:?Configure POSTGRES_PASSWORD}
+      AGE_RECIPIENT: ${AGE_RECIPIENT:-}
+      BACKUP_DIR: /backups
+      BACKUP_RETENTION_DAYS: ${BACKUP_RETENTION_DAYS:-7}
+    volumes: [encrypted-backups:/backups]
+    networks: [database]
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    mem_limit: 128m
+    depends_on:
+      db: {condition: service_healthy}
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: omnisight
+      POSTGRES_USER: omnisight
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Configure POSTGRES_PASSWORD}
+    volumes: [postgres-data:/var/lib/postgresql/data]
+    networks: [database]
+    restart: unless-stopped
+    mem_limit: 256m
+    healthcheck:
+      test: [CMD-SHELL, "pg_isready -U omnisight -d omnisight"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    logging:
+      driver: json-file
+      options: {max-size: 10m, max-file: "3"}
+  migrate:
+    <<: *api
+    command: [python, manage.py, migrate, --noinput]
+    restart: "no"
+  api:
+    <<: *api
+    environment:
+      <<: *api-env
+      DELETION_LEDGER_PATH: /privacy-ledger/deletions.jsonl
+      DELETION_LEDGER_KEY: ${DELETION_LEDGER_KEY:?Configure a separate DELETION_LEDGER_KEY}
+    volumes: [deletion-ledger:/privacy-ledger]
+    networks: [database, egress, frontend]
+    mem_limit: 256m
+    healthcheck:
+      test: [CMD, python, -c, "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/api/health/',timeout=3)"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    depends_on:
+      db: {condition: service_healthy}
+      migrate: {condition: service_completed_successfully}
+  worker:
+    <<: *api
+    command: [python, manage.py, run_scan_worker]
+    environment:
+      <<: *api-env
+      BROWSER_SERVICE_URL: http://browser:9000/analyze
+    networks: [database, egress, browser-private]
+    mem_limit: 256m
+    cpus: 0.5
+    depends_on:
+      db: {condition: service_healthy}
+      migrate: {condition: service_completed_successfully}
+      browser: {condition: service_started}
+  retention:
+    <<: *api
+    command: [python, manage.py, run_retention_worker]
+    networks: [database]
+    mem_limit: 128m
+    cpus: 0.25
+    depends_on:
+      db: {condition: service_healthy}
+      migrate: {condition: service_completed_successfully}
+  browser:
+    build:
+      context: ..
+      dockerfile: deploy/browser.Dockerfile
+    restart: unless-stopped
+    init: true
+    read_only: true
+    tmpfs: [/tmp:size=192m]
+    shm_size: 128m
+    cap_drop: [ALL]
+    security_opt:
+      - seccomp=./seccomp_profile.json
+    networks: [browser-private]
+    mem_limit: 768m
+    cpus: 1
+    pids_limit: 256
+    logging:
+      driver: json-file
+      options: {max-size: 10m, max-file: "3"}
+  web:
+    build:
+      context: ..
+      dockerfile: deploy/web.Dockerfile
+    networks: [frontend]
+    restart: unless-stopped
+    mem_limit: 96m
+    read_only: true
+    tmpfs: [/tmp:size=32m]
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+  caddy:
+    image: caddy:2-alpine
+    environment:
+      APP_DOMAIN: ${APP_DOMAIN:?Configure APP_DOMAIN}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+      - caddy-config:/config
+    ports: ["80:80", "443:443"]
+    networks: [frontend, egress]
+    restart: unless-stopped
+    mem_limit: 96m
+    depends_on:
+      api: {condition: service_healthy}
+      web: {condition: service_started}
+networks:
+  egress: {}
+  database: {internal: true}
+  browser-private: {internal: true}
+  frontend: {}
+volumes:
+  encrypted-backups: {}
+  deletion-ledger: {}
+  postgres-data: {}
+  caddy-data: {}
+  caddy-config: {}

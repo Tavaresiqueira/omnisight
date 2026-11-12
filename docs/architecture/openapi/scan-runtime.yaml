@@ -1,0 +1,150 @@
+openapi: 3.1.0
+info:
+  title: OmniSight - contrato implementado de scans
+  version: 0.5.0
+  description: Complementa o contrato conceitual inicial. Rotas reais Django usam /api e barra final.
+servers:
+  - url: /api
+security:
+  - tokenAuth: []
+paths:
+  /auth/account/export/:
+    get:
+      summary: Cadastro e associações da conta autenticada; relatórios exportados separadamente
+      responses:
+        '200': {description: 'schemaVersion, user, memberships; sem senha/hash/token'}
+        '429': {$ref: '#/components/responses/RateLimited'}
+  /auth/account/close/:
+    post:
+      summary: Encerrar conta e espaços exclusivos; exige senha atual
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [password, confirmation]
+              properties:
+                password: {type: string, writeOnly: true, maxLength: 256}
+                confirmation: {type: string, const: ENCERRAR MINHA CONTA}
+      responses:
+        '204': {description: Conta, tokens e espaços exclusivos removidos}
+        '400': {description: Senha ou confirmação inválida}
+        '403': {description: Conta demo compartilhada}
+        '409': {description: Único owner de espaço com outros membros; resolver espaço explicitamente}
+        '429': {$ref: '#/components/responses/RateLimited'}
+        '503': {description: Registro durável indisponível; exclusão recusada}
+  /organizations/{organizationId}/:
+    parameters:
+      - {in: path, name: organizationId, required: true, schema: {type: string, format: uuid}}
+    post:
+      summary: Owner encerra explicitamente o espaço e dados compartilhados; contas dos membros preservadas
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [password, confirmation]
+              properties:
+                password: {type: string, writeOnly: true, maxLength: 256}
+                confirmation: {type: string, description: Nome exato da organização}
+      responses:
+        '204': {description: Espaço removido; conta sem outros espaços permanece com organization e role nulos}
+        '400': {description: Senha ou confirmação inválida}
+        '403': {description: Papel sem permissão ou conta demo}
+        '404': {description: Espaço inexistente ou fora da organização}
+        '429': {$ref: '#/components/responses/RateLimited'}
+        '503': {description: Registro durável indisponível; exclusão recusada}
+  /sites/{siteId}/scans/:
+    parameters:
+      - {in: path, name: siteId, required: true, schema: {type: string, format: uuid}}
+    get:
+      summary: Últimos 20 scans da organização autorizada
+      responses:
+        '200': {description: 'Objeto items com estado, tentativas, timestamps, código de erro e correlação.'}
+        '404': {description: Site não encontrado ou fora da organização}
+        '429': {$ref: '#/components/responses/RateLimited'}
+    post:
+      summary: Enfileirar análise de uma página; owner ou member
+      parameters:
+        - {in: header, name: Idempotency-Key, required: true, schema: {type: string, minLength: 16, maxLength: 128}}
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              properties: {viewport: {type: string, enum: [desktop], default: desktop}}
+      responses:
+        '202': {description: Scan persistido; repetir a chave devolve o mesmo scan}
+        '403': {description: Viewer não pode iniciar scan}
+        '409': {description: Chave reutilizada em outro site}
+        '429': {$ref: '#/components/responses/RateLimited'}
+  /scans/{scanId}/:
+    parameters:
+      - {in: path, name: scanId, required: true, schema: {type: string, format: uuid}}
+    get:
+      summary: Consultar estado autorizado
+      responses:
+        '200': {description: 'status queued/running/completed/failed/cancelled; tentativas e códigos públicos'}
+        '404': {description: Scan inexistente ou não autorizado}
+        '429': {$ref: '#/components/responses/RateLimited'}
+    delete:
+      summary: Proprietário exclui permanentemente scan e relatório; publicação tardia é impedida
+      responses:
+        '204': {description: Scan e snapshot removidos do banco ativo}
+        '503': {description: Registro durável indisponível; exclusão recusada}
+        '403': {description: Membro ou viewer não pode excluir}
+        '404': {description: Scan inexistente ou fora da organização}
+        '429': {$ref: '#/components/responses/RateLimited'}
+  /scans/{scanId}/actions/:
+    parameters:
+      - {in: path, name: scanId, required: true, schema: {type: string, format: uuid}}
+    post:
+      summary: Cancelar ou repetir uma falha, até três tentativas
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties: {action: {type: string, enum: [cancel, retry]}}
+              required: [action]
+      responses:
+        '200': {description: Estado atualizado}
+        '403': {description: Viewer não pode alterar scan}
+        '409': {description: Transição inválida ou teto de tentativas}
+        '429': {$ref: '#/components/responses/RateLimited'}
+  /scans/{scanId}/report/:
+    parameters:
+      - {in: path, name: scanId, required: true, schema: {type: string, format: uuid}}
+    get:
+      summary: Snapshot publicado; sem acesso a lease ou HTML completo
+      responses:
+        '200': {description: 'schemaVersion 1; engine/engineVersion/mode, pages e coverage'}
+        '404': {description: Ainda não concluído ou não autorizado}
+        '429': {$ref: '#/components/responses/RateLimited'}
+components:
+  responses:
+    RateLimited:
+      description: Limite HTTP, cota de scans ou capacidade atingidos; aguardar antes de tentar novamente.
+      headers:
+        Retry-After:
+          description: Espera indicativa em segundos.
+          schema: {type: integer, minimum: 1}
+      content:
+        application/json:
+          schema:
+            type: object
+            required: [code, message, scope]
+            properties:
+              code: {type: string, const: RATE_LIMITED}
+              message: {type: string}
+              scope: {type: string}
+  securitySchemes:
+    tokenAuth:
+      type: apiKey
+      in: header
+      name: Authorization
+      description: 'Token <chave emitida pelo login Django>'

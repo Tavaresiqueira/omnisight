@@ -1,0 +1,185 @@
+name: Quality gates
+on: [push, pull_request]
+permissions:
+  contents: read
+jobs:
+  api:
+    runs-on: ubuntu-22.04
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_DB: omnisight
+          POSTGRES_USER: omnisight
+          POSTGRES_PASSWORD: ci-only-password
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U omnisight"
+          --health-interval 5s --health-timeout 3s --health-retries 20
+    env:
+      DATABASE_URL: postgresql://omnisight:ci-only-password@localhost:5432/omnisight
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: {python-version: '3.12'}
+      - run: pip install -r apps/api/requirements.txt
+      - run: python apps/api/manage.py makemigrations --check --dry-run
+      - run: python apps/api/manage.py test identity.tests -v 1
+  web:
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: {node-version: '22', cache: npm}
+      - run: npm ci
+      - run: node --test apps/extension/tests.mjs apps/browser/visual.test.mjs
+      - run: npm run test:web
+      - run: npm run build --workspace @omnisight/web -- --webpack
+        env: {NEXT_PUBLIC_API_URL: /api}
+  browser:
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: {python-version: '3.12'}
+      - run: pip install -r apps/browser/requirements.txt
+      - run: python -m playwright install --with-deps chromium
+      - run: python -m unittest discover -s apps/browser/tests -v
+        env: {RUN_BROWSER_TESTS: '1'}
+  compose:
+    runs-on: ubuntu-22.04
+    env:
+      APP_DOMAIN: localhost
+      DJANGO_SECRET_KEY: ci-only-secret-key-with-more-than-fifty-characters-0123456789
+      POSTGRES_PASSWORD: ci-only-postgres-password
+      DELETION_LEDGER_KEY: ci-only-deletion-ledger-key-with-at-least-32-characters
+    steps:
+      - uses: actions/checkout@v4
+      - run: docker compose -f deploy/compose.yml config --quiet
+      - run: docker compose -f deploy/compose.yml build
+      - run: docker compose -f deploy/compose.yml up -d
+      - run: |
+          for n in $(seq 1 60); do
+            if docker compose -f deploy/compose.yml exec -T api python -c "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/api/health/')"; then exit 0; fi
+            sleep 2
+          done
+          exit 1
+      - run: |
+          for n in $(seq 1 30); do
+            if curl --insecure --fail --silent https://localhost/api/health/ && curl --insecure --fail --silent -o /dev/null https://localhost/; then exit 0; fi
+            sleep 2
+          done
+          exit 1
+      - run: docker compose -f deploy/compose.yml exec -T -e RUN_BROWSER_TESTS=1 browser python -m unittest discover -s tests -v
+      - if: always()
+        run: docker compose -f deploy/compose.yml down -v
+  e2e:
+    runs-on: ubuntu-22.04
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_DB: omnisight
+          POSTGRES_USER: omnisight
+          POSTGRES_PASSWORD: ci-only-password
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U omnisight"
+          --health-interval 5s --health-timeout 3s --health-retries 20
+    env:
+      DATABASE_URL: postgresql://omnisight:ci-only-password@localhost:5432/omnisight
+      NEXT_PUBLIC_API_URL: /api
+      BROWSER_SERVICE_URL: http://127.0.0.1:9000/analyze
+      RUN_E2E_TESTS: '1'
+      DELETION_LEDGER_PATH: /tmp/omnisight-e2e-deletions.jsonl
+      DELETION_LEDGER_KEY: ci-only-deletion-ledger-key-with-at-least-32-characters
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: {python-version: '3.12'}
+      - uses: actions/setup-node@v4
+        with: {node-version: '22', cache: npm}
+      - run: pip install -r apps/api/requirements.txt -r apps/browser/requirements.txt
+      - run: python -m playwright install --with-deps chromium
+      - run: npm ci
+      - run: npm run build --workspace @omnisight/web -- --webpack
+      - name: Start private test analyzer
+        run: |
+          mkdir -p artifacts/e2e
+          python apps/browser/server.py > artifacts/e2e/browser.log 2>&1 &
+          for n in $(seq 1 20); do
+            if curl --fail --silent http://127.0.0.1:9000/health; then exit 0; fi
+            sleep 1
+          done
+          exit 1
+      - run: python apps/api/manage.py test identity.e2e -v 2
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: critical-journey-evidence
+          path: artifacts/e2e/
+          retention-days: 7
+  restore-drill:
+    runs-on: ubuntu-24.04
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_DB: omnisight_backup_ci
+          POSTGRES_USER: omnisight
+          POSTGRES_PASSWORD: ci-only-password
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U omnisight -d omnisight_backup_ci"
+          --health-interval 5s --health-timeout 3s --health-retries 20
+    env:
+      PGHOST: localhost
+      PGPORT: '5432'
+      PGUSER: omnisight
+      PGPASSWORD: ci-only-password
+      PGDATABASE: omnisight_backup_ci
+      DATABASE_URL: postgresql://omnisight:ci-only-password@localhost:5432/omnisight_backup_ci
+      DJANGO_ALLOWED_HOSTS: localhost,testserver
+      DELETION_LEDGER_KEY: ci-only-independent-signing-key-with-at-least-32-characters
+      DELETION_LEDGER_PATH: ${{ runner.temp }}/restore-deletions.jsonl
+      AGE_IDENTITY_FILE: ${{ runner.temp }}/restore-age-key
+      BACKUP_DIR: ${{ runner.temp }}/encrypted-backups
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: {python-version: '3.12'}
+      - run: sudo apt-get update && sudo apt-get install -y age postgresql-client-16
+      - run: echo /usr/lib/postgresql/16/bin >> "$GITHUB_PATH"
+      - run: pip install -r apps/api/requirements.txt
+      - run: python apps/api/manage.py migrate --noinput
+      - run: RESTORE_DRILL_PHASE=seed python apps/api/manage.py shell < apps/api/identity/e2e/restore_drill.py
+      - name: Encrypt disposable backup
+        shell: bash
+        run: |
+          umask 077
+          age-keygen -o "$AGE_IDENTITY_FILE"
+          export AGE_RECIPIENT
+          AGE_RECIPIENT=$(age-keygen -y "$AGE_IDENTITY_FILE")
+          bash deploy/backup/backup.sh
+          files=("$BACKUP_DIR"/*.age)
+          printf 'BACKUP_FILE=%s\n' "${files[0]}" >> "$GITHUB_ENV"
+      - run: RESTORE_DRILL_PHASE=close python apps/api/manage.py shell < apps/api/identity/e2e/restore_drill.py
+      - name: Keep checkpoint independent of restored database
+        shell: bash
+        run: |
+          digest=$(sha256sum "$DELETION_LEDGER_PATH")
+          printf 'DELETION_LEDGER_SHA256=%s\n' "${digest%% *}" >> "$GITHUB_ENV"
+      - name: Restore offline and replay deletions
+        shell: bash
+        run: |
+          mkdir -p artifacts/recovery
+          createdb omnisight_restore_ci
+          PGDATABASE=omnisight_restore_ci bash deploy/backup/restore.sh --apply 2>&1 | tee artifacts/recovery/restore.log
+      - name: Verify no resurrection and preserve unrelated user
+        run: RESTORE_DRILL_PHASE=verify DATABASE_URL=postgresql://omnisight:ci-only-password@localhost:5432/omnisight_restore_ci python apps/api/manage.py shell < apps/api/identity/e2e/restore_drill.py
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: restore-drill-evidence
+          path: artifacts/recovery/
+          retention-days: 7

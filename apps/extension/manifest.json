@@ -1,0 +1,10 @@
+{
+  "manifest_version": 3,
+  "name": "OmniSight - Analisar página renderizada",
+  "version": "0.1.0",
+  "description": "Analisa a aba autorizada com axe-core e gera um relatório local, sem enviar cookies ou conteúdo a servidores.",
+  "permissions": ["activeTab", "scripting"],
+  "action": {"default_title": "Analisar esta página com OmniSight"},
+  "background": {"service_worker": "background.js"},
+  "content_security_policy": {"extension_pages": "script-src 'self'; object-src 'none'; connect-src 'none'"}
+}
