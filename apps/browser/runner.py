@@ -28,7 +28,9 @@ def analyze(html, stylesheets=None):
             page=context.new_page();page.set_default_timeout(15000)
             page.goto(SNAPSHOT,wait_until='domcontentloaded')
             for css in stylesheets or []:
-                page.add_style_tag(content=css)
+                # Imported resources stay blocked by CSP and routing. Appending a
+                # style node avoids treating a blocked import as a fatal load.
+                page.evaluate("css => { const style = document.createElement('style'); style.textContent = css; document.head.appendChild(style); }", css)
             # DevTools injection of trusted, bundled engine; source scripts remain CSP-blocked.
             page.evaluate(AXE.read_text())
             page.evaluate('(locale) => axe.configure({locale})',json.loads(AXE.with_name('pt_BR.json').read_text()))
