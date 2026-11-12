@@ -1,6 +1,6 @@
 from concurrent.futures import ThreadPoolExecutor
 from unittest import skipUnless
-from django.db import connection,close_old_connections
+from django.db import connection,close_old_connections,connections
 from django.test import TransactionTestCase
 from identity.models import Scan,Site
 from identity.services import create_user_workspace
@@ -17,7 +17,7 @@ class ConcurrentClaimTests(TransactionTestCase):
             try:
                 scan=claim_scan()
                 return str(scan.id) if scan else None
-            finally:close_old_connections()
+            finally:connections.close_all()
         with ThreadPoolExecutor(max_workers=2) as pool:results=list(pool.map(lambda _:claim(),range(2)))
         self.assertEqual(len([r for r in results if r is not None]),1)
         self.assertEqual(Scan.objects.get().attempts,1)
