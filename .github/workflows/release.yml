@@ -1,0 +1,79 @@
+name: Release
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: release-production
+  cancel-in-progress: false
+jobs:
+  quality:
+    uses: ./.github/workflows/quality.yml
+  images:
+    needs: quality
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 35
+    strategy:
+      fail-fast: false
+      matrix:
+        service: [api, browser, web, backup]
+    steps:
+      - uses: actions/checkout@v4
+        with: {persist-credentials: false}
+      - name: Build immutable application image
+        env:
+          SERVICE: ${{ matrix.service }}
+        run: |
+          docker build -f "deploy/$SERVICE.Dockerfile" -t "omnisight/$SERVICE:$GITHUB_SHA" .
+          mkdir -p images
+          docker save "omnisight/$SERVICE:$GITHUB_SHA" | gzip > "images/$SERVICE.tar.gz"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: image-${{ matrix.service }}
+          path: images/
+          retention-days: 1
+          compression-level: 0
+          if-no-files-found: error
+  deploy:
+    needs: images
+    if: github.ref == 'refs/heads/main' && vars.DEPLOY_ENABLED == 'true'
+    environment: production
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+        with: {persist-credentials: false}
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: image-*
+          path: images
+          merge-multiple: true
+      - name: Configure pinned SSH connection
+        env:
+          SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+          KNOWN_HOSTS: ${{ secrets.DEPLOY_KNOWN_HOSTS }}
+          HOST: ${{ vars.DEPLOY_HOST }}
+          USER: ${{ vars.DEPLOY_USER }}
+        run: |
+          test -n "$SSH_KEY" && test -n "$KNOWN_HOSTS" && test -n "$HOST" && test -n "$USER"
+          [[ "$HOST" =~ ^[a-zA-Z0-9.-]+$ ]] && [[ "$USER" =~ ^[a-z_][a-z0-9_-]*$ ]]
+          install -m 700 -d ~/.ssh
+          printf '%s\n' "$SSH_KEY" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          printf '%s\n' "$KNOWN_HOSTS" > ~/.ssh/known_hosts
+          printf 'Host production\n  HostName %s\n  User %s\n  IdentityFile ~/.ssh/deploy_key\n  IdentitiesOnly yes\n  StrictHostKeyChecking yes\n  BatchMode yes\n  ConnectTimeout 15\n' "$HOST" "$USER" > ~/.ssh/config
+      - name: Transfer tested release and images
+        run: |
+          tar czf release.tar.gz deploy images
+          sha256sum release.tar.gz > release.sha256
+          ssh production "mkdir -p /opt/omnisight/incoming/$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT"
+          scp release.tar.gz release.sha256 "production:/opt/omnisight/incoming/$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT/"
+      - name: Activate release and verify HTTPS
+        run: |
+          ssh production "cd /opt/omnisight/incoming/$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT && sha256sum -c release.sha256 && tar xzf release.tar.gz && sudo bash deploy/activate.sh '$GITHUB_SHA' '$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT'"
+      - name: Remove local SSH key
+        if: always()
+        run: rm -f ~/.ssh/deploy_key

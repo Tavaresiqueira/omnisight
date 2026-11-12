@@ -1,0 +1,16 @@
+# Overlay: builds happen in Actions; the host loads the exact commit's images.
+services:
+  api:
+    image: omnisight/api:${RELEASE_SHA:?Configure RELEASE_SHA}
+  migrate:
+    image: omnisight/api:${RELEASE_SHA:?Configure RELEASE_SHA}
+  worker:
+    image: omnisight/api:${RELEASE_SHA:?Configure RELEASE_SHA}
+  retention:
+    image: omnisight/api:${RELEASE_SHA:?Configure RELEASE_SHA}
+  browser:
+    image: omnisight/browser:${RELEASE_SHA:?Configure RELEASE_SHA}
+  web:
+    image: omnisight/web:${RELEASE_SHA:?Configure RELEASE_SHA}
+  backup:
+    image: omnisight/backup:${RELEASE_SHA:?Configure RELEASE_SHA}
