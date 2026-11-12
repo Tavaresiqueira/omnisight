@@ -1,6 +1,6 @@
 import http from "node:http";
 import { Sandbox } from "railway";
-import { makeTemplate, runIsolatedAnalysis, MAX_REQUEST_BYTES } from "./runtime.js";
+import { makeTemplate, runIsolatedAnalysis, MAX_REQUEST_BYTES, startupDiagnostic } from "./runtime.js";
 
 const port = Number(process.env.PORT || 9000);
 const maxConcurrent = Number(process.env.MAX_CONCURRENT_SCANS || 2);
@@ -43,8 +43,8 @@ server.listen(port, "::", async () => {
   try {
     template = await makeTemplate(Sandbox).build({ environmentId: process.env.RAILWAY_ENVIRONMENT_ID });
     console.log("browser broker ready");
-  } catch {
-    console.error("browser broker template build failed");
+  } catch (error) {
+    console.error("browser broker template build failed", startupDiagnostic(error, [process.env.RAILWAY_API_TOKEN, process.env.RAILWAY_TOKEN]));
     process.exitCode = 1;
     server.close();
   }

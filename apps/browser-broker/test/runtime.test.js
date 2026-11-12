@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { runIsolatedAnalysis, validatePayload, MAX_HTML_BYTES } from "../src/runtime.js";
+import { runIsolatedAnalysis, validatePayload, MAX_HTML_BYTES, startupDiagnostic } from "../src/runtime.js";
 
 test("validates HTML and bounded stylesheet input", () => {
   assert.deepEqual(validatePayload({ html: "<main/>", stylesheets: ["body{}"] }), { html: "<main/>", stylesheets: ["body{}"] });
@@ -31,4 +31,13 @@ test("destroys VM after an execution failure", async () => {
   const sandbox = { files: { write: async () => {} }, exec: () => ({ stdin: { write: async () => {}, end: async () => {} }, then: (resolve) => resolve({ exitCode: 2, timedOut: false, truncated: false, stdout: "", stderr: "" }) }), destroy: async () => { destroyed = true; } };
   await assert.rejects(runIsolatedAnalysis({ Sandbox: { create: async () => sandbox }, template: {}, payload: { html: "<main/>" }, bundleDir: new URL("../../browser", import.meta.url).pathname }), /analysis_failed/);
   assert.equal(destroyed, true);
+});
+
+
+test("startup diagnostics redact credentials and bound provider messages", () => {
+  const diagnostic = startupDiagnostic(Object.assign(new Error("token secret secret " + "x".repeat(1000)), { status: 403 }), ["secret"]);
+  assert.equal(diagnostic.status, 403);
+  assert.equal(diagnostic.message.includes("secret"), false);
+  assert.ok(diagnostic.message.startsWith("token [REDACTED] [REDACTED]"));
+  assert.equal(diagnostic.message.length, 500);
 });

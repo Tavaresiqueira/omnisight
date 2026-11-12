@@ -12,6 +12,12 @@ const BROWSER_ROOT = "/broker/omnisight-browser";
 const VM_ROOT = "/opt/omnisight";
 const FILES = ["runner.py", "visual_capture.py", "visual.js", "axe_scan.js", "vendor/axe.min.js", "vendor/pt_BR.json"];
 
+export function startupDiagnostic(error, secrets = []) {
+  let message = String(error?.message || "unknown_error");
+  for (const secret of secrets) if (secret) message = message.replaceAll(secret, "[REDACTED]");
+  return { name: String(error?.name || "Error"), status: error?.status, message: message.slice(0, 500) };
+}
+
 export function validatePayload(value) {
   if (!value || typeof value !== "object" || Array.isArray(value)) throw new Error("invalid_payload");
   if (typeof value.html !== "string" || Buffer.byteLength(value.html, "utf8") > MAX_HTML_BYTES) throw new Error("invalid_html");
