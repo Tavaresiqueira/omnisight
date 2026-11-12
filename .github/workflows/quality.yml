@@ -1,9 +1,31 @@
 name: Quality gates
-on: [push, pull_request]
+on:
+  push:
+    branches-ignore: [main]
+  pull_request:
+  workflow_dispatch:
+  workflow_call:
+concurrency:
+  group: quality-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 permissions:
   contents: read
 jobs:
+  workflow-lint:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate workflow syntax and context availability
+        run: |
+          curl --fail --location --silent --show-error https://github.com/rhysd/actionlint/releases/download/v1.7.7/actionlint_1.7.7_linux_amd64.tar.gz -o /tmp/actionlint.tar.gz
+          echo '023070a287cd8cccd71515fedc843f1985bf96c436b7effaecce67290e7e0757  /tmp/actionlint.tar.gz' | sha256sum -c -
+          tar xzf /tmp/actionlint.tar.gz -C /tmp actionlint
+          /tmp/actionlint -shellcheck=
+      - run: bash -n deploy/activate.sh
+      - run: python3 -m unittest discover -s deploy/tests -v
   api:
+    timeout-minutes: 30
     runs-on: ubuntu-22.04
     services:
       postgres:
@@ -26,6 +48,7 @@ jobs:
       - run: python apps/api/manage.py makemigrations --check --dry-run
       - run: python apps/api/manage.py test identity.tests -v 1
   web:
+    timeout-minutes: 30
     runs-on: ubuntu-22.04
     steps:
       - uses: actions/checkout@v4
@@ -37,6 +60,7 @@ jobs:
       - run: npm run build --workspace @omnisight/web -- --webpack
         env: {NEXT_PUBLIC_API_URL: /api}
   browser:
+    timeout-minutes: 30
     runs-on: ubuntu-22.04
     steps:
       - uses: actions/checkout@v4
@@ -47,6 +71,7 @@ jobs:
       - run: python -m unittest discover -s apps/browser/tests -v
         env: {RUN_BROWSER_TESTS: '1'}
   compose:
+    timeout-minutes: 30
     runs-on: ubuntu-22.04
     env:
       APP_DOMAIN: localhost
@@ -71,9 +96,13 @@ jobs:
           done
           exit 1
       - run: docker compose -f deploy/compose.yml exec -T -e RUN_BROWSER_TESTS=1 browser python -m unittest discover -s tests -v
+      - name: Collect Compose diagnostics
+        if: failure()
+        run: docker compose -f deploy/compose.yml logs --no-color --tail 150
       - if: always()
         run: docker compose -f deploy/compose.yml down -v
   e2e:
+    timeout-minutes: 30
     runs-on: ubuntu-22.04
     services:
       postgres:
@@ -120,6 +149,7 @@ jobs:
           path: artifacts/e2e/
           retention-days: 7
   restore-drill:
+    timeout-minutes: 30
     runs-on: ubuntu-24.04
     services:
       postgres:
@@ -141,9 +171,6 @@ jobs:
       DATABASE_URL: postgresql://omnisight:ci-only-password@localhost:5432/omnisight_backup_ci
       DJANGO_ALLOWED_HOSTS: localhost,testserver
       DELETION_LEDGER_KEY: ci-only-independent-signing-key-with-at-least-32-characters
-      DELETION_LEDGER_PATH: ${{ runner.temp }}/restore-deletions.jsonl
-      AGE_IDENTITY_FILE: ${{ runner.temp }}/restore-age-key
-      BACKUP_DIR: ${{ runner.temp }}/encrypted-backups
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -151,6 +178,11 @@ jobs:
       - run: sudo apt-get update && sudo apt-get install -y age postgresql-client-16
       - run: echo /usr/lib/postgresql/16/bin >> "$GITHUB_PATH"
       - run: pip install -r apps/api/requirements.txt
+      - name: Configure disposable recovery paths
+        run: |
+          echo "DELETION_LEDGER_PATH=$RUNNER_TEMP/restore-deletions.jsonl" >> "$GITHUB_ENV"
+          echo "AGE_IDENTITY_FILE=$RUNNER_TEMP/restore-age-key" >> "$GITHUB_ENV"
+          echo "BACKUP_DIR=$RUNNER_TEMP/encrypted-backups" >> "$GITHUB_ENV"
       - run: python apps/api/manage.py migrate --noinput
       - run: RESTORE_DRILL_PHASE=seed python apps/api/manage.py shell < apps/api/identity/e2e/restore_drill.py
       - name: Encrypt disposable backup
