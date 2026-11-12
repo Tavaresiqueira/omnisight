@@ -11,12 +11,17 @@ AXE=Path(__file__).parent/'vendor'/'axe.min.js'
 SNAPSHOT='https://snapshot.invalid/'
 CSP="default-src 'none'; script-src 'none'; style-src 'unsafe-inline'; img-src 'none'; font-src 'none'; connect-src 'none'; frame-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'"
 
+def chromium_sandbox_enabled(value=None):
+    if value is None:
+        value=os.environ.get("CHROMIUM_SANDBOX", "true")
+    return value.strip().lower() not in {"0", "false", "no", "off"}
+
 def analyze(html, stylesheets=None):
     if not isinstance(html,str) or len(html.encode())>2*1024*1024:
         raise ValueError('HTML inválido ou maior que 2 MiB.')
     with sync_playwright() as p:
         executable=os.environ.get('CHROMIUM_EXECUTABLE')
-        browser=p.chromium.launch(headless=True,chromium_sandbox=True,**({'executable_path':executable} if executable else {}))
+        browser=p.chromium.launch(headless=True,chromium_sandbox=chromium_sandbox_enabled(),**({'executable_path':executable} if executable else {}))
         try:
             context=browser.new_context(viewport={'width':1280,'height':800},accept_downloads=False,service_workers='block',locale='pt-BR')
             def route(request):

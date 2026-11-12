@@ -16,7 +16,7 @@ def execute(payload, *, startup=False):
     styles=payload.get('stylesheets',[])
     if not isinstance(styles,list) or len(styles)>3 or any(not isinstance(css,str) or len(css.encode())>262144 for css in styles):
         raise ValueError('Folhas de estilo inválidas.')
-    env={key:os.environ[key] for key in ['PATH','HOME','TMPDIR','PLAYWRIGHT_BROWSERS_PATH','CHROMIUM_EXECUTABLE'] if key in os.environ}
+    env={key:os.environ[key] for key in ['PATH','HOME','TMPDIR','PLAYWRIGHT_BROWSERS_PATH','CHROMIUM_EXECUTABLE','CHROMIUM_SANDBOX'] if key in os.environ}
     process=subprocess.Popen([sys.executable,str(Path(__file__).with_name('runner.py'))],stdin=subprocess.PIPE,stdout=subprocess.PIPE,stderr=subprocess.PIPE if startup else subprocess.DEVNULL,env=env,start_new_session=True)
     try:
         stdout,diagnostic=process.communicate(json.dumps(payload,ensure_ascii=False).encode(),timeout=40)
