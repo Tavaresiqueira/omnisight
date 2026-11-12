@@ -28,3 +28,13 @@ class BrowserTests(unittest.TestCase):
         self.assertTrue(all(v['screenshot']['mime']=='image/jpeg' for v in r['visual']))
         self.assertEqual(r['visual'][1]['checks'][0]['status'],'review')
         self.assertGreater(r['visual'][1]['checks'][3]['count'],0)
+
+    def test_blocked_external_css_import_does_not_abort_local_rules(self):
+        result=runner.analyze(
+            '<html lang="pt"><title>CSS import</title><main><h1>CSS import</h1><div class="wide">Conteúdo</div><button></button></main></html>',
+            ['@import url("https://fonts.googleapis.com/css?family=Montserrat"); .wide { width: 1600px; }'],
+        )
+        self.assertEqual(result['title'], 'CSS import')
+        self.assertIn('button-name', [check['id'] for check in result['checks'] if check['status']=='issue'])
+        self.assertEqual(len(result['visual']), 2)
+        self.assertEqual(result['visual'][1]['checks'][0]['status'], 'review')

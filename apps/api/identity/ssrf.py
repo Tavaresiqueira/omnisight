@@ -153,6 +153,7 @@ class _PinnedHTTPSConnection(http.client.HTTPSConnection):
 
 def _request_once(destination, timeout, max_response_bytes):
     connection = _PinnedHTTPSConnection(destination, timeout)
+    response = None
     try:
         connection.request(
             "GET",
@@ -164,6 +165,9 @@ def _request_once(destination, timeout, max_response_bytes):
                 "User-Agent": "OmniSight-Scanner/0.1",
             },
         )
+        # HTTPConnection detaches self.sock for Connection: close responses.
+        # The response still owns the same transport while its body is open.
+        response_socket = connection.sock
         response = connection.getresponse()
         headers = response.getheaders()
         if response.status in REDIRECT_STATUSES:
@@ -180,11 +184,11 @@ def _request_once(destination, timeout, max_response_bytes):
         deadline = time.monotonic() + timeout
         chunks = []
         received = 0
-        while True:
+        while not response.isclosed():
             remaining_time = deadline - time.monotonic()
             if remaining_time <= 0:
                 raise DestinationBlocked("A resposta excedeu o tempo permitido para o scan.")
-            connection.sock.settimeout(remaining_time)
+            response_socket.settimeout(remaining_time)
             chunk = response.read(min(64 * 1024, max_response_bytes + 1 - received))
             if not chunk:
                 break
@@ -194,6 +198,8 @@ def _request_once(destination, timeout, max_response_bytes):
                 raise DestinationBlocked("A resposta excedeu o limite permitido para o scan.")
         return response.status, headers, b"".join(chunks)
     finally:
+        if response is not None:
+            response.close()
         connection.close()
 
 

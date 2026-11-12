@@ -4,14 +4,23 @@ from unittest import TestCase
 from unittest.mock import patch
 spec=importlib.util.spec_from_file_location('server',Path(__file__).resolve().parents[1]/'server.py');server=importlib.util.module_from_spec(spec);spec.loader.exec_module(server)
 class ServiceTests(TestCase):
+    @patch.dict('os.environ', {'BROWSER_STARTUP_CHECK': 'true'}, clear=False)
+    @patch.object(server, 'HTTPServer')
+    @patch.object(server, 'execute', side_effect=ValueError('Sandbox unavailable'))
+    def test_failed_sandbox_check_prevents_a_healthy_server(self, execute, listener):
+        with self.assertRaisesRegex(ValueError, 'Sandbox unavailable'):
+            server.serve()
+        listener.assert_not_called()
+
     def test_rejects_untrusted_shapes_before_process_creation(self):
-        for data in [{},{'html':4},{'html':'x','url':'http://private'},{'html':'x'*2097153}]:
+        for data in [{},{'html':4},{'html':'x','startup':True},{'html':'x','url':'http://private'},{'html':'x'*2097153}]:
             with self.assertRaises(ValueError):server.execute(data)
     @patch.dict('os.environ',{'DATABASE_URL':'secret','AWS_SECRET_ACCESS_KEY':'secret'},clear=False)
     @patch.object(server.subprocess,'Popen')
     def test_child_does_not_receive_application_or_cloud_credentials(self,popen):
         popen.return_value.communicate.return_value=(b'{}',b'');popen.return_value.returncode=0
         self.assertEqual(server.execute({'html':'x'}),{})
+        self.assertEqual(popen.call_args.kwargs['stderr'], server.subprocess.DEVNULL)
         env=popen.call_args.kwargs['env'];self.assertNotIn('DATABASE_URL',env);self.assertNotIn('AWS_SECRET_ACCESS_KEY',env)
 
     @patch.object(server.os,'killpg')
@@ -21,3 +30,13 @@ class ServiceTests(TestCase):
         process=popen.return_value;process.pid=123;process.communicate.side_effect=[subprocess.TimeoutExpired('runner',40),(b'',b'')]
         with self.assertRaises(TimeoutError):server.execute({'html':'x'})
         killpg.assert_called_once_with(123,signal.SIGKILL)
+
+    @patch.object(server.sys, 'stderr')
+    @patch.object(server.subprocess, 'Popen')
+    def test_only_trusted_startup_logs_bounded_diagnostics(self, popen, stderr):
+        popen.return_value.communicate.return_value = (b'', b'x' * 5000)
+        popen.return_value.returncode = 1
+        with self.assertRaises(ValueError):
+            server.execute({'html': '<title>Startup fixture</title>'}, startup=True)
+        self.assertEqual(popen.call_args.kwargs['stderr'], server.subprocess.PIPE)
+        stderr.write.assert_called_once_with('x' * 4000)
