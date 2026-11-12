@@ -1,7 +1,7 @@
 import axe from "axe-core";
 import { cleanup, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { AuthExperience } from "./auth-experience";
 
@@ -41,10 +41,19 @@ const extensionResponse = {
 
 
 describe("AuthExperience", () => {
+  beforeEach(() => vi.stubEnv('NEXT_PUBLIC_SAMPLE_ACCOUNTS', 'true'));
   afterEach(() => {
+    vi.unstubAllEnvs();
     cleanup();
     vi.restoreAllMocks();
     window.sessionStorage.clear();
+  });
+
+  it('hides sample accounts when they are disabled for the deployment', () => {
+    vi.stubEnv('NEXT_PUBLIC_SAMPLE_ACCOUNTS', 'false');
+    render(<AuthExperience />);
+    expect(screen.queryByRole('button', {name: /entrar na demo/i})).toBeNull();
+    expect(screen.queryByText(/MVP/i)).toBeNull();
   });
 
   it("renders the login experience without automated accessibility violations", async () => {

@@ -135,7 +135,7 @@ export function AuthExperience() {
           </li>
         </ul>
 
-        <p className="intro-note">MVP em construção · resultados automatizados não substituem avaliação humana.</p>
+        <p className="intro-note">Diagnósticos de acessibilidade com evidências, critérios WCAG e histórico de avaliações.</p>
       </section>
 
       <section className="auth-panel" aria-labelledby="auth-title">
@@ -252,7 +252,7 @@ export function AuthExperience() {
                 </form>
               </div>
 
-              {mode === "login" && (
+              {mode === "login" && process.env.NEXT_PUBLIC_SAMPLE_ACCOUNTS === "true" && (
                 <div className="demo-area">
                   <div className="divider">
                     <span>ou explore uma conta demo</span>
@@ -288,7 +288,7 @@ export function AuthExperience() {
           </>
         </div>
         <p className="privacy-note">
-          Ao continuar, você concorda com o uso mínimo de dados necessário para o MVP.
+          Sua conta permite organizar os sites e acessar o histórico dos seus diagnósticos.
         </p>
       </section>
     </main>

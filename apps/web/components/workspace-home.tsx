@@ -72,7 +72,7 @@ export function WorkspaceHome({ session, onSignOut }: WorkspaceHomeProps) {
           </article>
 
           <article className="workspace-card workspace-next-step">
-            <p className="eyebrow">Próxima etapa do MVP</p>
+            <p className="eyebrow">Suas avaliações</p>
             <h2>{isDeveloper ? "Histórico de avaliações" : "Conectar a extensão"}</h2>
             <p>
               {isDeveloper
@@ -84,7 +84,7 @@ export function WorkspaceHome({ session, onSignOut }: WorkspaceHomeProps) {
         </div>
 
         <p className="workspace-disclaimer">
-          O OmniSight está em construção. Resultados automatizados não substituem avaliação humana.
+          Os relatórios registram a página analisada, as verificações executadas e as evidências encontradas.
         </p>
       </section>
     </main>
