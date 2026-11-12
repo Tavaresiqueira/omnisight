@@ -3,6 +3,7 @@ import json
 import os
 from pathlib import Path
 import signal
+import socket
 import subprocess
 import sys
 from http.server import BaseHTTPRequestHandler, HTTPServer
@@ -40,4 +41,21 @@ class Handler(BaseHTTPRequestHandler):
         except (ValueError,TimeoutError):
             self.send_error(422,'Análise indisponível')
 
-if __name__=='__main__':HTTPServer(('0.0.0.0',9000),Handler).serve_forever()
+class IPv6HTTPServer(HTTPServer):
+    address_family = socket.AF_INET6
+
+
+def serve():
+    # Prove the sandbox works before the deployment can report itself healthy.
+    if os.environ.get('BROWSER_STARTUP_CHECK') == 'true':
+        execute({'html': '<html lang="pt-BR"><title>OmniSight</title><main><h1>Verificação do navegador</h1></main></html>'})
+    host = os.environ.get('BROWSER_LISTEN_HOST', '0.0.0.0')
+    port = int(os.environ.get('PORT', '9000'))
+    if not 1 <= port <= 65535:
+        raise ValueError('Porta inválida.')
+    server = IPv6HTTPServer if ':' in host else HTTPServer
+    server((host, port), Handler).serve_forever()
+
+
+if __name__ == '__main__':
+    serve()

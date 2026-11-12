@@ -4,6 +4,14 @@ from unittest import TestCase
 from unittest.mock import patch
 spec=importlib.util.spec_from_file_location('server',Path(__file__).resolve().parents[1]/'server.py');server=importlib.util.module_from_spec(spec);spec.loader.exec_module(server)
 class ServiceTests(TestCase):
+    @patch.dict('os.environ', {'BROWSER_STARTUP_CHECK': 'true'}, clear=False)
+    @patch.object(server, 'HTTPServer')
+    @patch.object(server, 'execute', side_effect=ValueError('Sandbox unavailable'))
+    def test_failed_sandbox_check_prevents_a_healthy_server(self, execute, listener):
+        with self.assertRaisesRegex(ValueError, 'Sandbox unavailable'):
+            server.serve()
+        listener.assert_not_called()
+
     def test_rejects_untrusted_shapes_before_process_creation(self):
         for data in [{},{'html':4},{'html':'x','url':'http://private'},{'html':'x'*2097153}]:
             with self.assertRaises(ValueError):server.execute(data)
