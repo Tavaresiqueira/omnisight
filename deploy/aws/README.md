@@ -44,6 +44,10 @@ preparada para x86_64; ARM não foi validado. O template cria VM + IP estático,
 abre 80/443 e restringe SSH ao IPv4/32 informado. Isso cria recursos cobrados.
 Criar o stack pelo console CloudFormation, informando todos os parâmetros.
 
+## CI/CD
+
+Para publicação contínua após os quality gates, seguir [o runbook de CI/CD](../../docs/operations/ci-cd.md). O deploy é opt-in e usa imagens construídas no Actions.
+
 ## Instalação no servidor
 
 O bootstrap instala Docker/Compose. Aguarde sua conclusão. Faça upload do ZIP

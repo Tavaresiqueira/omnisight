@@ -51,11 +51,12 @@
 	],
 	"syscalls": [
 		{
-			"comment": "Allow create user namespaces",
+			"comment": "Allow Chromium user namespaces and its chroot sandbox; cap_drop ALL leaves the outer process without CAP_SYS_CHROOT",
 			"names": [
 				"clone",
 				"setns",
-				"unshare"
+				"unshare",
+				"chroot"
 			],
 			"action": "SCMP_ACT_ALLOW",
 			"args": [],

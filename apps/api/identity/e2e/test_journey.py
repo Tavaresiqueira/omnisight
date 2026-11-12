@@ -1,9 +1,11 @@
 """Real UI, HTTP API, DB, queue, browser service and axe; fixture replaces target network only."""
 import os
+from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 from unittest import skipUnless
 from unittest.mock import patch
 
+from django.db import connections
 from django.test import LiveServerTestCase, override_settings
 from identity.models import Scan, ScanReport
 from identity.pipeline import collect_and_analyze
@@ -38,6 +40,7 @@ class CriticalJourneyTests(LiveServerTestCase):
                 page.get_by_role('button', name='Criar meu espaço').click()
                 expect(page.get_by_role('heading', name='Visão da plataforma')).to_be_visible()
                 page.get_by_role('button', name='Sair', exact=True).click()
+                page.get_by_role('tab', name='Entrar', exact=True).click()
                 page.get_by_label('E-mail', exact=True).fill('journey@example.com')
                 page.get_by_label('Senha', exact=True).fill('E2E-only-strong-pass-2026!')
                 page.get_by_role('button', name='Entrar na plataforma').click()
@@ -54,11 +57,21 @@ class CriticalJourneyTests(LiveServerTestCase):
                 run.click()
                 expect(page.get_by_text('Último scan: Na fila.', exact=True)).to_be_visible()
                 with patch('identity.crawler.fetch_public_url', return_value=fixture), patch('identity.worker.collect_and_analyze', side_effect=collect_and_analyze):
-                    self.assertTrue(process_next())
-                scan = Scan.objects.get()
-                self.assertEqual(scan.status, 'completed', scan.error_code)
-                report = ScanReport.objects.get(scan=scan)
-                self.assertTrue(any(c['id'] == 'image-alt' and c['status'] == 'issue' for c in report.payload['pages'][0]['checks']))
+                    # Playwright's sync API keeps an event loop on this thread.
+                    # Execute the synchronous worker/ORM in its own thread, as
+                    # it runs in production, without disabling Django's guard.
+                    def finish_scan():
+                        try:
+                            self.assertTrue(process_next())
+                            scan = Scan.objects.get()
+                            self.assertEqual(scan.status, 'completed', scan.error_code)
+                            report = ScanReport.objects.get(scan=scan)
+                            self.assertTrue(any(c['id'] == 'image-alt' and c['status'] == 'issue' for c in report.payload['pages'][0]['checks']))
+                            return scan.id
+                        finally:
+                            connections.close_all()
+                    with ThreadPoolExecutor(max_workers=1) as worker:
+                        scan_id = worker.submit(finish_scan).result()
                 expect(page.get_by_role('button', name='Ver relatório')).to_be_visible(timeout=15000)
                 page.get_by_role('button', name='Ver relatório').click()
                 expect(page.get_by_role('heading', name='Diagnóstico salvo')).to_be_visible()
@@ -73,14 +86,15 @@ class CriticalJourneyTests(LiveServerTestCase):
                     'display_name': 'Outro espaço', 'account_type': 'platform_developer',
                 })
                 self.assertEqual(response.status, 201)
-                denied = context.request.get(self.live_server_url + f'/api/scans/{scan.id}/report/', headers={'Authorization': 'Token ' + response.json()['token']})
+                denied = context.request.get(self.live_server_url + f'/api/scans/{scan_id}/report/', headers={'Authorization': 'Token ' + response.json()['token']})
                 self.assertEqual(denied.status, 404)
                 page.get_by_role('button', name='Excluir scan', exact=True).click()
                 page.get_by_role('button', name='Confirmar exclusão', exact=True).click()
                 expect(page.get_by_text('Scan e relatório excluídos.', exact=True)).to_be_visible()
-                self.assertFalse(ScanReport.objects.exists())
-                self.assertFalse(Scan.objects.exists())
             finally:
                 page.screenshot(path=str(artifacts / 'last-page.png'), full_page=True)
                 context.tracing.stop(path=str(artifacts / 'trace.zip'))
                 browser.close()
+
+        self.assertFalse(ScanReport.objects.exists())
+        self.assertFalse(Scan.objects.exists())
