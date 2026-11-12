@@ -36,7 +36,7 @@ fi
 # container previously exited successfully. Do not migrate backwards on failure.
 "${compose[@]}" stop api worker retention
 "${compose[@]}" run --rm --no-build migrate
-"${compose[@]}" up -d --no-build --force-recreate --wait --wait-timeout 180
+"${compose[@]}" up -d --no-build --no-deps --force-recreate --wait --wait-timeout 180 api worker retention browser web caddy
 app_domain=$("${compose[@]}" exec -T api python -c 'from django.conf import settings; print(settings.ALLOWED_HOSTS[0])')
 healthy=false
 for attempt in {1..12}; do
