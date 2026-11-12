@@ -63,6 +63,9 @@ Somente worker:
 Somente browser:
 
 - `PORT=9000`, `BROWSER_LISTEN_HOST=::`, `BROWSER_STARTUP_CHECK=true`.
+- `HOME=/home/pwuser`: diretório gravável do usuário da imagem Playwright.
+  Esse valor deve corresponder ao diretório do usuário na imagem. O ajuste
+  de HOME isoladamente não resolveu a falha de inicialização observada.
 - Não configurar credenciais de banco, cloud ou aplicação nesse serviço.
 
 Antes de ouvir a porta/health, o browser executa uma análise real com o sandbox
