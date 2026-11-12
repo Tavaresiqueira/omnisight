@@ -9,17 +9,23 @@ com scripts, imagens/fontes e contraste é uma entrega separada, ainda necessár
 ## Ordem e configuração
 
 Conectar apenas o repositório `Tavaresiqueira/omnisight`. Manter a raiz do monorepo
-como build context e apontar cada serviço para seu Config File Path abaixo.
+como build context. Para serviços novos, configurar no painel os parâmetros abaixo;
+não usar Config File Path: Config as Code foi descontinuado para novos serviços.
+Referência: https://docs.railway.com/infrastructure-as-code
 O Railway não executa nosso Compose nem aplica seu perfil seccomp automaticamente.
 
-| Serviço | Config File Path | Porta | Visibilidade |
-| --- | --- | --- | --- |
-| PostgreSQL | PostgreSQL gerenciado pelo Railway | padrão do serviço | privada |
-| browser | `/deploy/railway/browser.railway.json` | 9000 | privada |
-| api | `/deploy/railway/api.railway.json` | 8000 | privada |
-| worker | `/deploy/railway/worker.railway.json` | nenhuma | privada |
-| retention | `/deploy/railway/retention.railway.json` | nenhuma | privada |
-| web | `/deploy/railway/web.railway.json` | 8080 | domínio HTTPS público |
+| Serviço | RAILWAY_DOCKERFILE_PATH | Comando inicial | Health | Porta |
+| --- | --- | --- | --- | --- |
+| PostgreSQL | serviço PostgreSQL do Railway | padrão | padrão | privada |
+| browser | `deploy/browser.Dockerfile` | padrão da imagem | `/health` | 9000 privada |
+| api | `deploy/railway/api.Dockerfile` | padrão da imagem | `/api/health/` | 8000 privada |
+| worker | `deploy/api.Dockerfile` | `python manage.py run_scan_worker` | sem HTTP | privada |
+| retention | `deploy/api.Dockerfile` | `python manage.py run_retention_worker` | sem HTTP | privada |
+| web | `deploy/railway/web.Dockerfile` | padrão da imagem | `/` | 8080 pública |
+
+Usar `RAILWAY_DOCKERFILE_PATH` nas variáveis de cada serviço. Habilitar **Wait for CI**.
+Configurar health timeout de 300 segundos e restart On Failure com 2 tentativas.
+Não sobrescrever o comando inicial de API, browser ou web.
 
 Criar e validar browser e banco primeiro. Depois api, worker/retention e web.
 Uma réplica por serviço inicialmente. Recursos limitados no painel; conferir o
@@ -67,8 +73,8 @@ Somente web:
 
 - `PORT=8080`, `API_UPSTREAM=api.railway.internal:8000`.
 
-Não colocar secrets em Git, Dockerfiles ou arquivos JSON. Os arquivos de config
-selecionam build/start/health; os valores ficam no painel/variables do Railway.
+Não colocar secrets em Git ou Dockerfiles. Build, start e health ficam nas
+configurações dos serviços; valores sensíveis ficam nas variables do Railway.
 
 ## Gates de liberação
 
