@@ -1,0 +1,17 @@
+{$APP_DOMAIN} {
+    encode zstd gzip
+    header {
+        X-Content-Type-Options nosniff
+        Referrer-Policy strict-origin-when-cross-origin
+        X-Frame-Options DENY
+    }
+    @api path /api/*
+    handle @api {
+        reverse_proxy api:8000 {
+            header_up X-OmniSight-Client-IP {remote_host}
+        }
+    }
+    handle {
+        reverse_proxy web:8080
+    }
+}

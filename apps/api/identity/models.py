@@ -96,3 +96,81 @@ class Membership(models.Model):
     def __str__(self):
         return f"{self.user.email} — {self.organization.name}"
 
+
+class Site(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    organization = models.ForeignKey(
+        Organization,
+        on_delete=models.CASCADE,
+        related_name="sites",
+    )
+    normalized_url = models.URLField(max_length=2048)
+    display_name = models.CharField(max_length=120)
+    created_at = models.DateTimeField(auto_now_add=True)
+    deleted_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=["organization", "normalized_url"],
+                condition=models.Q(deleted_at__isnull=True),
+                name="unique_active_site_url_per_organization",
+            )
+        ]
+
+    def __str__(self):
+        return self.display_name
+
+
+
+class Scan(models.Model):
+    class Status(models.TextChoices):
+        QUEUED = 'queued', 'Na fila'
+        RUNNING = 'running', 'Em execução'
+        COMPLETED = 'completed', 'Concluído'
+        FAILED = 'failed', 'Falhou'
+        CANCELLED = 'cancelled', 'Cancelado'
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    organization = models.ForeignKey(Organization, on_delete=models.CASCADE)
+    site = models.ForeignKey(Site, on_delete=models.CASCADE, related_name='scans')
+    idempotency_key = models.CharField(max_length=128)
+    status = models.CharField(max_length=16, choices=Status.choices, default=Status.QUEUED)
+    attempts = models.PositiveSmallIntegerField(default=0)
+    requested_at = models.DateTimeField(auto_now_add=True)
+    started_at = models.DateTimeField(null=True, blank=True)
+    completed_at = models.DateTimeField(null=True, blank=True)
+    correlation_id = models.UUIDField(default=uuid.uuid4, editable=False)
+
+    lease_token = models.UUIDField(null=True, editable=False)
+    lease_expires_at = models.DateTimeField(null=True, blank=True)
+    error_code = models.CharField(max_length=40, blank=True)
+
+    class Meta:
+        indexes = [models.Index(fields=['status', 'requested_at'], name='scan_queue_order')]
+        constraints = [models.UniqueConstraint(fields=['organization', 'idempotency_key'], name='unique_scan_request_per_org')]
+
+
+class ScanReport(models.Model):
+    """Write-once result; access always follows the scan organization."""
+    scan = models.OneToOneField(Scan, on_delete=models.CASCADE, related_name='report', primary_key=True)
+    engine_version = models.CharField(max_length=40)
+    payload = models.JSONField()
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def save(self, *args, **kwargs):
+        if not self._state.adding:
+            raise ValueError('Snapshots publicados são imutáveis.')
+        kwargs['force_insert'] = True
+        return super().save(*args, **kwargs)
+
+
+class AbuseBucket(models.Model):
+    scope = models.CharField(max_length=40)
+    key = models.CharField(max_length=64)
+    resets_at = models.DateTimeField(db_index=True)
+    count = models.PositiveIntegerField(default=0)
+    denied = models.PositiveIntegerField(default=0)
+
+    class Meta:
+        constraints = [models.UniqueConstraint(fields=['scope', 'key'], name='unique_abuse_bucket')]

@@ -713,3 +713,13 @@ button:disabled {
     transition: background-color 160ms ease, border-color 160ms ease, color 160ms ease, transform 160ms ease;
   }
 }
+
+.site-registration { margin: 32px 0; padding: clamp(20px, 4vw, 36px); background: white; border-radius: var(--radius-lg); border: 1px solid #ccd4dc; }
+.site-registration form { max-width: 680px; display: grid; gap: 16px; margin: 24px 0; }
+.site-registration ul { padding-left: 24px; overflow-wrap: anywhere; }
+.site-registration li { padding: 12px 0; }
+.site-registration a { color: #145e4c; font-weight: 700; text-decoration: underline; }
+.site-registration [role="alert"] { color: #9e1626; font-weight: 700; }
+.site-registration input:focus-visible { outline: 3px solid #145e4c; outline-offset: 3px; }
+.scan-panel{margin:16px 0;padding:16px;border:1px solid var(--line);border-radius:12px;background:#f8fafc}.scan-panel p,.scan-panel li{font-size:13px}.scan-panel li{margin:12px 0}.scan-panel li button{margin:6px;padding:7px 12px;border:1px solid #b8c4d6;border-radius:7px;background:white;color:var(--ink)}.saved-report{background:white;padding:18px;border:1px solid var(--line);border-radius:12px;margin-top:16px}.saved-report pre{white-space:pre-wrap;overflow-wrap:anywhere;background:#101625;color:#eef2ff;padding:12px;border-radius:7px}.saved-report summary{cursor:pointer;padding:12px;font-size:13px}.saved-report details{border-bottom:1px solid var(--line)}.saved-report select{padding:8px;margin:8px;border-radius:7px;background:white;color:var(--ink)}.scan-summary-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}.scan-summary-grid p{background:#edf0ff;border-radius:8px;padding:10px}.scan-summary-grid b{display:block;font-size:24px}@media(max-width:600px){.scan-summary-grid{grid-template-columns:1fr}}
+.visual-capture{margin:20px 0;padding:14px;border:1px solid var(--line);border-radius:12px}.visual-capture h5{font-size:15px;margin:8px 0}.visual-capture figure{margin:12px 0}.visual-capture img{display:block;max-width:100%;height:auto;border:1px solid #cbd5e1;border-radius:8px}.visual-capture figcaption{font-size:11px;color:var(--muted)}
