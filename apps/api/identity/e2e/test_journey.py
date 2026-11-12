@@ -38,6 +38,7 @@ class CriticalJourneyTests(LiveServerTestCase):
                 page.get_by_role('button', name='Criar meu espaço').click()
                 expect(page.get_by_role('heading', name='Visão da plataforma')).to_be_visible()
                 page.get_by_role('button', name='Sair', exact=True).click()
+                page.get_by_role('tab', name='Entrar', exact=True).click()
                 page.get_by_label('E-mail', exact=True).fill('journey@example.com')
                 page.get_by_label('Senha', exact=True).fill('E2E-only-strong-pass-2026!')
                 page.get_by_role('button', name='Entrar na plataforma').click()
