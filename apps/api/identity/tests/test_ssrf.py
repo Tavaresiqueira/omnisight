@@ -138,3 +138,25 @@ class PublicDestinationTests(SimpleTestCase):
         connect.assert_called_once_with(("93.184.216.34", 443), 5, None)
         wrap.assert_called_once_with(raw_socket, server_hostname="public.example")
         connection.close()
+
+
+class ClosingResponseTests(SimpleTestCase):
+    def test_reads_body_when_http_client_detaches_a_closing_connection(self):
+        import http.client
+        import io
+        from identity.ssrf import _request_once
+        destination = PublicDestination('https://public.example/', 'public.example', 443, ('1.1.1.1',))
+        transport = Mock()
+        transport.makefile.return_value = io.BytesIO(b'HTTP/1.1 200 OK\r\nConnection: close\r\nContent-Length: 2\r\n\r\nok')
+        response = http.client.HTTPResponse(transport)
+        response.begin()
+        connection = Mock(sock=transport)
+        def detach():
+            connection.sock = None
+            return response
+        connection.getresponse.side_effect = detach
+        with patch('identity.ssrf._PinnedHTTPSConnection', return_value=connection):
+            status, _, body = _request_once(destination, 2, 10)
+        self.assertEqual((status, body), (200, b'ok'))
+        transport.settimeout.assert_called_once()
+        connection.close.assert_called_once()
