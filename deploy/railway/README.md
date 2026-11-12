@@ -39,7 +39,7 @@ API, worker e retention:
 - `DATABASE_URL`: referência à URL **privada** do PostgreSQL do projeto.
 - `DJANGO_DEBUG=false`.
 - `DJANGO_SECRET_KEY`: segredo aleatório com pelo menos 50 caracteres, estável.
-- `DJANGO_ALLOWED_HOSTS`: domínio público de web, `localhost`, `127.0.0.1` e hostname privado da API.
+- `DJANGO_ALLOWED_HOSTS`: domínio público de web, `localhost`, `127.0.0.1`, `healthcheck.railway.app` e hostname privado da API.
 - `CORS_ALLOWED_ORIGINS`: origem HTTPS pública de web.
 - `DEMO_LOGIN_ENABLED=false`.
 - `TRUST_PROXY_CLIENT_IP=true`: a API é privada e recebe o header exclusivamente pelo gateway.
@@ -92,3 +92,7 @@ configurações dos serviços; valores sensíveis ficam nas variables do Railway
 
 Configuração local e testes unitários não comprovam execução remota. Registrar o
 resultado real destes gates antes de declarar o deploy operacional.
+
+A sondagem HTTP interna usa Host `healthcheck.railway.app`. A rota de saúde já
+é isenta do redirect HTTPS; as demais rotas preservam o redirect. Não liberar
+ALLOWED_HOSTS com wildcard para resolver o health check.
