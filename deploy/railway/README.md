@@ -17,7 +17,7 @@ O Railway não executa nosso Compose nem aplica seu perfil seccomp automaticamen
 | Serviço | RAILWAY_DOCKERFILE_PATH | Comando inicial | Health | Porta |
 | --- | --- | --- | --- | --- |
 | PostgreSQL | serviço PostgreSQL do Railway | padrão | padrão | privada |
-| browser | `deploy/browser.Dockerfile` | padrão da imagem | `/health` | 9000 privada |
+| browser | `deploy/railway/broker.Dockerfile` | padrão da imagem | `/health` | 9000 privada |
 | api | `deploy/railway/api.Dockerfile` | padrão da imagem | `/api/health/` | 8000 privada |
 | worker | `deploy/api.Dockerfile` | `python manage.py run_scan_worker` | sem HTTP | privada |
 | retention | `deploy/api.Dockerfile` | `python manage.py run_retention_worker` | sem HTTP | privada |
@@ -60,17 +60,22 @@ Somente worker:
 
 - `BROWSER_SERVICE_URL=http://browser.railway.internal:9000/analyze`.
 
-Somente browser:
+Somente browser broker:
 
-- `PORT=9000`, `BROWSER_LISTEN_HOST=::`, `BROWSER_STARTUP_CHECK=true`.
-- `HOME=/home/pwuser`: diretório gravável do usuário da imagem Playwright.
-  Esse valor deve corresponder ao diretório do usuário na imagem. O ajuste
-  de HOME isoladamente não resolveu a falha de inicialização observada.
+- `PORT=9000`, `RAILWAY_ENVIRONMENT_ID=<ID do ambiente production>`.
+- `RAILWAY_API_TOKEN`: token Railway com permissão para criar e destruir Sandbox
+  VMs no ambiente. Guardar como secret no Railway, nunca no repositório.
 - Não configurar credenciais de banco, cloud ou aplicação nesse serviço.
+- Não atribuir domínio público. O worker chama o broker pela rede privada.
+- O broker prepara uma imagem cacheável com Chromium e, para cada scan, cria uma
+  VM isolada, executa o runner versionado neste mesmo commit e destrói a VM.
+  O HTML/CSS é enviado por stdin, e o broker impõe limites ao tamanho e à saída.
+- A VM usa rede `ISOLATED`, sem acesso à rede privada do projeto. A leitura do
+  site e a coleta CSS continuam no pipeline SSRF protegido do worker.
 
-Antes de ouvir a porta/health, o browser executa uma análise real com o sandbox
-Chromium habilitado. Uma falha impede o deploy saudável. Não remover o sandbox
-para obter um health verde. O bind IPv6 atende a rede privada do Railway.
+Após configurar o broker, alterar o serviço existente `browser` para usar
+`deploy/railway/broker.Dockerfile`, health `/health`, porta 9000 e rede privada.
+Manter `BROWSER_SERVICE_URL` do worker como está.
 
 Somente web:
 
@@ -81,7 +86,7 @@ configurações dos serviços; valores sensíveis ficam nas variables do Railway
 
 ## Gates de liberação
 
-1. Startup do Chromium aprovado no próprio Railway.
+1. Build da base Chromium e criação/destruição de uma Sandbox VM aprovados no Railway.
 2. Migrações, health de API e gateway aprovados.
 3. Cadastro/login reais, scan queued → completed, relatório, screenshots desktop/móvel,
    isolamento de organizações e exclusão testados pelo domínio público.

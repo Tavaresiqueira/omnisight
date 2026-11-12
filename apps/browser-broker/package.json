@@ -1,0 +1,7 @@
+{
+  "name": "@omnisight/browser-broker",
+  "private": true,
+  "type": "module",
+  "scripts": { "start": "node src/server.js", "test": "node --test" },
+  "dependencies": { "railway": "3.16.0" }
+}
